@@ -5,7 +5,7 @@ import { CosmicBackground } from "@/components/CosmicBackground";
 import { CodeverseButton } from "@/components/ui/codeverse-button";
 import { CodeverseInput } from "@/components/ui/codeverse-input";
 import { useTeamSession } from "@/hooks/useTeamSession";
-import { Terminal } from "lucide-react";
+import { Terminal, Shield } from "lucide-react";
 
 const Index = () => {
   const [teamName, setTeamName] = useState("");
@@ -135,11 +135,22 @@ const Index = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1, duration: 0.5 }}
-          className="mt-8 text-center"
+          className="mt-8 text-center space-y-4"
         >
           <p className="text-xs text-muted-foreground/50 font-mono">
             [ Session will sync across all connected devices ]
           </p>
+          <div>
+            <CodeverseButton
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/admin")}
+              className="text-xs font-mono"
+            >
+              <Shield className="w-3 h-3 mr-2" />
+              Admin Access
+            </CodeverseButton>
+          </div>
         </motion.div>
       </motion.div>
     </div>

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/codeverse-card";
 import { useTeamSession } from "@/hooks/useTeamSession";
 import { useRounds } from "@/hooks/useRounds";
-import { Cpu, Zap, Skull, LogOut } from "lucide-react";
+import { Cpu, Zap, Skull, LogOut, Shield } from "lucide-react";
 
 const storyContent = {
   intro: `In the infinite expanse of the CodeVerse, where logic weaves reality and algorithms shape existence, a catastrophic event has fractured the very fabric of computational space.`,
@@ -102,10 +102,21 @@ const Welcome = () => {
               Welcome, {team?.name}
             </h1>
           </div>
-          <CodeverseButton variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Exit
-          </CodeverseButton>
+          <div className="flex items-center gap-2">
+            <CodeverseButton 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate("/admin")}
+              className="text-xs"
+            >
+              <Shield className="w-3 h-3 mr-1" />
+              Admin
+            </CodeverseButton>
+            <CodeverseButton variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Exit
+            </CodeverseButton>
+          </div>
         </motion.header>
 
         {/* Story Section */}
