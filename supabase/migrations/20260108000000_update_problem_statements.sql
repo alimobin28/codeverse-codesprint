@@ -68,10 +68,5 @@ WHERE round_number = 3 AND problem_code = 'E';
 -- Update timer durations for Round 2 and Round 3 problems
 UPDATE public.problems 
 SET timer_duration_seconds = 660  -- 11 minutes
-WHERE round_number = 2;
-
--- Update Round 3 global timer setting
-UPDATE public.admin_settings 
-SET setting_value = '3300'  -- 55 minutes in seconds
-WHERE setting_key = 'round3_global_timer_seconds';
+WHERE round_number = 2 OR round_number = 3;
 

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/codeverse-card";
 import { useRounds } from "@/hooks/useRounds";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, Lock, Unlock, Play, Square, RefreshCw } from "lucide-react";
+import { Shield, Lock, Unlock, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const Admin = () => {
@@ -19,7 +19,7 @@ const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
   const navigate = useNavigate();
-  const { rounds, unlockRound, toggleRound3Timer, refetch } = useRounds();
+  const { rounds, unlockRound, refetch } = useRounds();
 
   useEffect(() => {
     const fetchAdminPassword = async () => {
@@ -53,15 +53,6 @@ const Admin = () => {
       toast.success(`Round ${roundNumber} ${!currentState ? "unlocked" : "locked"}`);
     } else {
       toast.error("Failed to update round status");
-    }
-  };
-
-  const handleTimerToggle = async (currentState: boolean) => {
-    const success = await toggleRound3Timer(!currentState);
-    if (success) {
-      toast.success(`Round 3 timer ${!currentState ? "started" : "stopped"}`);
-    } else {
-      toast.error("Failed to toggle timer");
     }
   };
 
@@ -199,69 +190,6 @@ const Admin = () => {
           })}
         </div>
 
-        {/* Round 3 Timer Control */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <CodeverseCard variant="elevated" size="lg">
-            <CodeverseCardHeader>
-              <CodeverseCardTitle className="text-primary">
-                Round 3 Global Timer Control
-              </CodeverseCardTitle>
-            </CodeverseCardHeader>
-            
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-muted/30 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Timer Duration</p>
-                  <p className="text-2xl font-display font-bold">11:00</p>
-                </div>
-                <div className="p-4 bg-muted/30 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Timer Status</p>
-                  <p
-                    className={`text-2xl font-display font-bold ${
-                      getRound(3)?.timer_active
-                        ? "text-codeverse-terminal"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {getRound(3)?.timer_active ? "ACTIVE" : "STOPPED"}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex gap-4">
-                <CodeverseButton
-                  variant={getRound(3)?.timer_active ? "destructive" : "primary"}
-                  size="lg"
-                  className="flex-1"
-                  onClick={() => handleTimerToggle(getRound(3)?.timer_active || false)}
-                  disabled={!getRound(3)?.is_unlocked}
-                >
-                  {getRound(3)?.timer_active ? (
-                    <>
-                      <Square className="w-5 h-5 mr-2" />
-                      STOP TIMER
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-5 h-5 mr-2" />
-                      START TIMER
-                    </>
-                  )}
-                </CodeverseButton>
-              </div>
-              
-              {!getRound(3)?.is_unlocked && (
-                <p className="text-sm text-muted-foreground text-center font-mono">
-                  [Round 3 must be unlocked first]
-                </p>
-              )}
-            </div>
-          </CodeverseCard>
-        </motion.div>
       </div>
     </div>
   );
