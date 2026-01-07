@@ -12,10 +12,16 @@ import {
 import { useTeamSession } from "@/hooks/useTeamSession";
 import { useRounds } from "@/hooks/useRounds";
 import { useProblems } from "@/hooks/useProblems";
-import { ArrowLeft, Clock, Skull, Eye, X } from "lucide-react";
+import { ArrowLeft, Clock, Skull, Eye, X, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
-const TOTAL_TIME = 660; // 11 minutes in seconds
+const VJUDGE_CONTEST_ID = "779643";
+const GLOBAL_ROUND_TIME = 55 * 60; // 55 minutes in seconds
+const PROBLEM_TIMER_DURATION = 11 * 60; // 11 minutes per problem
+
+const getVJudgeLink = (problemCode: string) => {
+  return `https://vjudge.net/contest/${VJUDGE_CONTEST_ID}#problem/${problemCode}`;
+};
 
 const Round3 = () => {
   const navigate = useNavigate();
@@ -23,8 +29,13 @@ const Round3 = () => {
   const { getRound, loading: roundsLoading } = useRounds();
   const { problems, loading: problemsLoading } = useProblems(3);
   
+  // Filter to only show problems A-E
+  const filteredProblems = problems.filter(p => ['A', 'B', 'C', 'D', 'E'].includes(p.problem_code)).slice(0, 5);
+  
   const [selectedProblem, setSelectedProblem] = useState<string | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [globalTimeRemaining, setGlobalTimeRemaining] = useState<number | null>(null);
+  const [problemStartTime, setProblemStartTime] = useState<number | null>(null);
+  const [problemTimeRemaining, setProblemTimeRemaining] = useState<number | null>(null);
   const [visitedProblems, setVisitedProblems] = useState<Set<string>>(new Set());
 
   const round = getRound(3);
@@ -44,25 +55,25 @@ const Round3 = () => {
     }
   }, [roundsLoading, round, navigate]);
 
-  // Calculate time remaining based on server start time
+  // Calculate global time remaining based on server start time
   useEffect(() => {
     if (!timerActive || !timerStartedAt) {
-      setTimeRemaining(null);
+      setGlobalTimeRemaining(null);
       return;
     }
 
     const calculateRemaining = () => {
       const startTime = new Date(timerStartedAt).getTime();
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const remaining = Math.max(0, TOTAL_TIME - elapsed);
+      const remaining = Math.max(0, GLOBAL_ROUND_TIME - elapsed);
       return remaining;
     };
 
-    setTimeRemaining(calculateRemaining());
+    setGlobalTimeRemaining(calculateRemaining());
 
     const interval = setInterval(() => {
       const remaining = calculateRemaining();
-      setTimeRemaining(remaining);
+      setGlobalTimeRemaining(remaining);
       
       if (remaining <= 0) {
         toast.error("Time's up! The Core Logic Confrontation has ended.");
@@ -72,6 +83,32 @@ const Round3 = () => {
 
     return () => clearInterval(interval);
   }, [timerActive, timerStartedAt]);
+
+  // Per-problem timer when a problem is selected
+  useEffect(() => {
+    if (!selectedProblem || !timerActive) {
+      setProblemTimeRemaining(null);
+      setProblemStartTime(null);
+      return;
+    }
+
+    const startTime = Date.now();
+    setProblemStartTime(startTime);
+    setProblemTimeRemaining(PROBLEM_TIMER_DURATION);
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, PROBLEM_TIMER_DURATION - elapsed);
+      setProblemTimeRemaining(remaining);
+      
+      if (remaining <= 0) {
+        toast.error(`Time's up for this problem!`);
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [selectedProblem, timerActive]);
 
   const openProblem = (problemId: string) => {
     if (selectedProblem) {
@@ -94,8 +131,9 @@ const Round3 = () => {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const currentProblem = problems.find((p) => p.id === selectedProblem);
-  const timeIsUp = timeRemaining !== null && timeRemaining <= 0;
+  const currentProblem = filteredProblems.find((p) => p.id === selectedProblem);
+  const globalTimeIsUp = globalTimeRemaining !== null && globalTimeRemaining <= 0;
+  const problemTimeIsUp = problemTimeRemaining !== null && problemTimeRemaining <= 0;
 
   if (loading) {
     return (
@@ -145,14 +183,14 @@ const Round3 = () => {
             {/* Global Timer */}
             <motion.div
               animate={
-                timerActive && timeRemaining !== null && timeRemaining < 60
+                timerActive && globalTimeRemaining !== null && globalTimeRemaining < 60
                   ? { scale: [1, 1.05, 1], borderColor: ["hsl(348,100%,50%)", "hsl(348,100%,70%)", "hsl(348,100%,50%)"] }
                   : {}
               }
-              transition={{ duration: 0.5, repeat: timerActive && timeRemaining !== null && timeRemaining < 60 ? Infinity : 0 }}
+              transition={{ duration: 0.5, repeat: timerActive && globalTimeRemaining !== null && globalTimeRemaining < 60 ? Infinity : 0 }}
               className={`p-4 rounded-lg border ${
                 timerActive
-                  ? timeRemaining !== null && timeRemaining < 60
+                  ? globalTimeRemaining !== null && globalTimeRemaining < 60
                     ? "border-destructive bg-destructive/10 animate-pulse"
                     : "border-primary/50 bg-primary/5"
                   : "border-muted bg-muted/20"
@@ -166,13 +204,13 @@ const Round3 = () => {
                 className={`text-4xl font-display font-bold ${
                   !timerActive
                     ? "text-muted-foreground"
-                    : timeRemaining !== null && timeRemaining < 60
+                    : globalTimeRemaining !== null && globalTimeRemaining < 60
                     ? "text-destructive"
                     : "text-primary"
                 }`}
               >
-                {timerActive && timeRemaining !== null
-                  ? formatTime(timeRemaining)
+                {timerActive && globalTimeRemaining !== null
+                  ? formatTime(globalTimeRemaining)
                   : "WAITING"}
               </p>
               {!timerActive && (
@@ -185,7 +223,7 @@ const Round3 = () => {
         </motion.header>
 
         {/* Time Up Overlay */}
-        {timeIsUp && (
+        {globalTimeIsUp && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -218,7 +256,7 @@ const Round3 = () => {
           >
             <CodeverseCard variant="active" size="lg">
               <CodeverseCardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/50">
                       <span className="font-display font-bold text-2xl text-primary">
@@ -234,21 +272,65 @@ const Round3 = () => {
                       </p>
                     </div>
                   </div>
-                  <CodeverseButton variant="ghost" size="icon" onClick={closeProblem}>
-                    <X className="w-5 h-5" />
-                  </CodeverseButton>
+                  <div className="flex items-center gap-3">
+                    {problemTimeRemaining !== null && (
+                      <motion.div
+                        animate={problemTimeRemaining < 60 ? { scale: [1, 1.05, 1] } : {}}
+                        transition={{ duration: 0.5, repeat: problemTimeRemaining < 60 ? Infinity : 0 }}
+                        className={`p-3 rounded-lg border ${
+                          problemTimeRemaining < 60
+                            ? "border-destructive bg-destructive/10"
+                            : "border-primary/50 bg-primary/5"
+                        }`}
+                      >
+                        <p className="text-xs text-muted-foreground font-mono flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          PROBLEM TIME
+                        </p>
+                        <p className={`text-xl font-display font-bold ${
+                          problemTimeRemaining < 60 ? "text-destructive" : "text-primary"
+                        }`}>
+                          {formatTime(problemTimeRemaining)}
+                        </p>
+                      </motion.div>
+                    )}
+                    <CodeverseButton variant="ghost" size="icon" onClick={closeProblem}>
+                      <X className="w-5 h-5" />
+                    </CodeverseButton>
+                  </div>
                 </div>
               </CodeverseCardHeader>
 
               <CodeverseCardContent>
-                <div className="p-6 bg-muted/30 rounded-lg border border-primary/20 min-h-[200px]">
-                  <p className="font-mono text-foreground/90 leading-relaxed">
-                    {currentProblem.statement}
-                  </p>
-                </div>
-                
-                <div className="mt-6 text-center text-sm text-muted-foreground font-mono">
-                  <p>[ No hints. No explanations. Core logic exposed. ]</p>
+                <div className="space-y-6">
+                  <div className="p-6 bg-muted/30 rounded-lg border border-primary/20 min-h-[200px]">
+                    <h4 className="text-sm font-semibold text-primary mb-3">
+                      PROBLEM STATEMENT
+                    </h4>
+                    <p className="font-mono text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                      {currentProblem.statement}
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                    <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
+                      <ExternalLink className="w-4 h-4" />
+                      VJUDGE LINK
+                    </h4>
+                    <a
+                      href={getVJudgeLink(currentProblem.problem_code)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-mono text-primary hover:underline flex items-center gap-2"
+                    >
+                      {getVJudgeLink(currentProblem.problem_code)}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  
+                  <div className="text-center text-sm text-muted-foreground font-mono">
+                    <p>[ No hints. No explanations. Core logic exposed. ]</p>
+                  </div>
                 </div>
               </CodeverseCardContent>
             </CodeverseCard>
@@ -273,7 +355,7 @@ const Round3 = () => {
 
             {/* Problems Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {problems.map((problem, index) => {
+              {filteredProblems.map((problem, index) => {
                 const wasVisited = visitedProblems.has(problem.id);
                 
                 return (
@@ -288,7 +370,7 @@ const Round3 = () => {
                       className={`cursor-pointer h-full ${
                         !timerActive ? "opacity-60" : ""
                       }`}
-                      onClick={() => timerActive && !timeIsUp && openProblem(problem.id)}
+                      onClick={() => timerActive && !globalTimeIsUp && openProblem(problem.id)}
                     >
                       <CodeverseCardHeader>
                         <div className="flex items-center gap-3">
@@ -314,7 +396,7 @@ const Round3 = () => {
                         </div>
                       </CodeverseCardHeader>
                       
-                      {timerActive && !timeIsUp && (
+                      {timerActive && !globalTimeIsUp && (
                         <CodeverseButton
                           variant={wasVisited ? "ghost" : "primary"}
                           size="sm"

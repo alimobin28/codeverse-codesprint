@@ -13,7 +13,14 @@ import {
 import { useTeamSession } from "@/hooks/useTeamSession";
 import { useRounds } from "@/hooks/useRounds";
 import { useProblems } from "@/hooks/useProblems";
-import { ArrowLeft, CheckCircle, Circle, Lightbulb, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Lightbulb, ChevronDown, ChevronUp, ExternalLink, Clock } from "lucide-react";
+
+const VJUDGE_CONTEST_ID = "779643";
+const ROUND_DURATION = 55 * 60; // 55 minutes in seconds
+
+const getVJudgeLink = (problemCode: string) => {
+  return `https://vjudge.net/contest/${VJUDGE_CONTEST_ID}#problem/${problemCode}`;
+};
 
 const Round1 = () => {
   const navigate = useNavigate();
@@ -21,10 +28,25 @@ const Round1 = () => {
   const { getRound, loading: roundsLoading } = useRounds();
   const { problems, loading: problemsLoading } = useProblems(1);
   const [expandedProblem, setExpandedProblem] = useState<string | null>(null);
-  const [solvedProblems, setSolvedProblems] = useState<Set<string>>(new Set());
+  const [roundStartTime] = useState<number>(Date.now());
+  const [timeRemaining, setTimeRemaining] = useState<number>(ROUND_DURATION);
 
+  // Filter to only show problems A-E
+  const filteredProblems = problems.filter(p => ['A', 'B', 'C', 'D', 'E'].includes(p.problem_code)).slice(0, 5);
+  
   const round = getRound(1);
   const loading = teamLoading || roundsLoading || problemsLoading;
+
+  // Round timer countdown
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - roundStartTime) / 1000);
+      const remaining = Math.max(0, ROUND_DURATION - elapsed);
+      setTimeRemaining(remaining);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [roundStartTime]);
 
   useEffect(() => {
     if (!teamLoading && !team) {
@@ -42,14 +64,10 @@ const Round1 = () => {
     setExpandedProblem(expandedProblem === problemId ? null : problemId);
   };
 
-  const markSolved = (problemId: string) => {
-    const newSolved = new Set(solvedProblems);
-    if (newSolved.has(problemId)) {
-      newSolved.delete(problemId);
-    } else {
-      newSolved.add(problemId);
-    }
-    setSolvedProblems(newSolved);
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   if (loading) {
@@ -88,17 +106,20 @@ const Round1 = () => {
             Back to Mission Hub
           </CodeverseButton>
           
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <span className="text-sm text-muted-foreground font-mono">ROUND 1</span>
               <h1 className="font-display text-3xl font-bold text-glow-cyan">
                 Fragmented Logic Recovery
               </h1>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground font-mono">Progress</p>
+            <div className="text-right p-4 rounded-lg border border-secondary/50 bg-secondary/5">
+              <p className="text-sm text-muted-foreground font-mono flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                TIME REMAINING
+              </p>
               <p className="text-2xl font-display font-bold text-secondary">
-                {solvedProblems.size}/{problems.length}
+                {formatTime(timeRemaining)}
               </p>
             </div>
           </div>
@@ -122,9 +143,9 @@ const Round1 = () => {
 
         {/* Problems List */}
         <div className="space-y-4">
-          {problems.map((problem, index) => {
-            const isSolved = solvedProblems.has(problem.id);
+          {filteredProblems.map((problem, index) => {
             const isExpanded = expandedProblem === problem.id;
+            const vjudgeLink = getVJudgeLink(problem.problem_code);
 
             return (
               <motion.div
@@ -134,19 +155,13 @@ const Round1 = () => {
                 transition={{ delay: 0.3 + index * 0.1 }}
               >
                 <CodeverseCard
-                  variant={isSolved ? "cyan" : "default"}
+                  variant="default"
                   className="cursor-pointer"
                   onClick={() => toggleProblem(problem.id)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center font-display font-bold text-lg ${
-                          isSolved
-                            ? "bg-secondary/20 text-secondary"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center font-display font-bold text-lg bg-secondary/20 text-secondary">
                         {problem.problem_code}
                       </div>
                       <div>
@@ -157,11 +172,6 @@ const Round1 = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {isSolved ? (
-                        <CheckCircle className="w-5 h-5 text-secondary" />
-                      ) : (
-                        <Circle className="w-5 h-5 text-muted-foreground" />
-                      )}
                       {isExpanded ? (
                         <ChevronUp className="w-5 h-5" />
                       ) : (
@@ -183,9 +193,26 @@ const Round1 = () => {
                             <h4 className="text-sm font-semibold text-secondary mb-2">
                               PROBLEM STATEMENT
                             </h4>
-                            <p className="text-sm font-mono text-foreground/90 leading-relaxed">
+                            <p className="text-sm font-mono text-foreground/90 leading-relaxed whitespace-pre-wrap">
                               {problem.statement}
                             </p>
+                          </div>
+
+                          <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                            <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
+                              <ExternalLink className="w-4 h-4" />
+                              VJUDGE LINK
+                            </h4>
+                            <a
+                              href={vjudgeLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-mono text-primary hover:underline flex items-center gap-2"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {vjudgeLink}
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
                           </div>
 
                           {problem.guidance && (
@@ -199,19 +226,6 @@ const Round1 = () => {
                               </p>
                             </div>
                           )}
-
-                          <div className="flex justify-end">
-                            <CodeverseButton
-                              variant={isSolved ? "ghost" : "secondary"}
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                markSolved(problem.id);
-                              }}
-                            >
-                              {isSolved ? "Mark Unsolved" : "Mark as Solved"}
-                            </CodeverseButton>
-                          </div>
                         </div>
                       </CodeverseCardContent>
                     </motion.div>

@@ -12,14 +12,24 @@ import {
 import { useTeamSession } from "@/hooks/useTeamSession";
 import { useRounds } from "@/hooks/useRounds";
 import { useProblems } from "@/hooks/useProblems";
-import { ArrowLeft, Clock, AlertTriangle, Lock } from "lucide-react";
+import { ArrowLeft, Clock, AlertTriangle, Lock, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+
+const VJUDGE_CONTEST_ID = "779643";
+const PROBLEM_TIMER_DURATION = 11 * 60; // 11 minutes in seconds
+
+const getVJudgeLink = (problemCode: string) => {
+  return `https://vjudge.net/contest/${VJUDGE_CONTEST_ID}#problem/${problemCode}`;
+};
 
 const Round2 = () => {
   const navigate = useNavigate();
   const { team, loading: teamLoading } = useTeamSession();
   const { getRound, loading: roundsLoading } = useRounds();
   const { problems, loading: problemsLoading } = useProblems(2);
+  
+  // Filter to only show problems A-E
+  const filteredProblems = problems.filter(p => ['A', 'B', 'C', 'D', 'E'].includes(p.problem_code)).slice(0, 5);
   
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -28,7 +38,7 @@ const Round2 = () => {
 
   const round = getRound(2);
   const loading = teamLoading || roundsLoading || problemsLoading;
-  const currentProblem = problems[currentProblemIndex];
+  const currentProblem = filteredProblems[currentProblemIndex];
 
   useEffect(() => {
     if (!teamLoading && !team) {
@@ -45,7 +55,7 @@ const Round2 = () => {
   // Initialize timer when problem changes
   useEffect(() => {
     if (hasStarted && currentProblem && !lockedProblems.has(currentProblemIndex)) {
-      setTimeRemaining(currentProblem.timer_duration_seconds || 180);
+      setTimeRemaining(PROBLEM_TIMER_DURATION);
     }
   }, [currentProblemIndex, currentProblem, hasStarted, lockedProblems]);
 
@@ -73,12 +83,12 @@ const Round2 = () => {
     setLockedProblems((prev) => new Set([...prev, currentProblemIndex]));
     
     // Auto-advance to next problem
-    if (currentProblemIndex < problems.length - 1) {
+    if (currentProblemIndex < filteredProblems.length - 1) {
       setCurrentProblemIndex((prev) => prev + 1);
     } else {
       toast.info("Round 2 complete - all problems attempted");
     }
-  }, [currentProblemIndex, currentProblem, problems.length]);
+  }, [currentProblemIndex, currentProblem, filteredProblems.length]);
 
   const startRound = () => {
     setHasStarted(true);
@@ -86,7 +96,7 @@ const Round2 = () => {
   };
 
   const submitAndContinue = () => {
-    if (currentProblemIndex < problems.length - 1) {
+    if (currentProblemIndex < filteredProblems.length - 1) {
       setLockedProblems((prev) => new Set([...prev, currentProblemIndex]));
       setCurrentProblemIndex((prev) => prev + 1);
       toast.success("Submitted! Moving to next problem...");
@@ -118,7 +128,7 @@ const Round2 = () => {
   }
 
   const isLocked = lockedProblems.has(currentProblemIndex);
-  const allComplete = lockedProblems.size === problems.length;
+  const allComplete = lockedProblems.size === filteredProblems.length;
 
   return (
     <div className="min-h-screen p-4 md:p-8">
@@ -205,7 +215,7 @@ const Round2 = () => {
               </CodeverseCardHeader>
               <CodeverseCardContent>
                 <p className="text-muted-foreground font-mono mb-6">
-                  Once started, the timer cannot be paused. Ensure you're ready for all {problems.length} problems.
+                  Once started, the timer cannot be paused. Ensure you're ready for all {filteredProblems.length} problems. Each problem has 11 minutes.
                 </p>
                 <CodeverseButton size="lg" onClick={startRound}>
                   START ROUND 2
@@ -254,7 +264,7 @@ const Round2 = () => {
                     <div>
                       <CodeverseCardTitle>{currentProblem?.title}</CodeverseCardTitle>
                       <p className="text-sm text-muted-foreground font-mono">
-                        Problem {currentProblemIndex + 1} of {problems.length}
+                        Problem {currentProblemIndex + 1} of {filteredProblems.length}
                       </p>
                     </div>
                   </div>
@@ -270,15 +280,36 @@ const Round2 = () => {
               <CodeverseCardContent>
                 <div className="space-y-6">
                   <div className="p-6 bg-muted/30 rounded-lg border border-border">
+                    <h4 className="text-sm font-semibold text-codeverse-warning mb-3">
+                      PROBLEM STATEMENT
+                    </h4>
                     <p className="font-mono text-foreground/90 leading-relaxed whitespace-pre-wrap">
                       {currentProblem?.statement}
                     </p>
                   </div>
 
+                  {currentProblem && (
+                    <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                      <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
+                        <ExternalLink className="w-4 h-4" />
+                        VJUDGE LINK
+                      </h4>
+                      <a
+                        href={getVJudgeLink(currentProblem.problem_code)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-mono text-primary hover:underline flex items-center gap-2"
+                      >
+                        {getVJudgeLink(currentProblem.problem_code)}
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  )}
+
                   {!isLocked && (
                     <div className="flex justify-end">
                       <CodeverseButton onClick={submitAndContinue}>
-                        {currentProblemIndex < problems.length - 1
+                        {currentProblemIndex < filteredProblems.length - 1
                           ? "SUBMIT & CONTINUE"
                           : "SUBMIT & FINISH"}
                       </CodeverseButton>
@@ -297,7 +328,7 @@ const Round2 = () => {
             animate={{ opacity: 1 }}
             className="mt-8 flex justify-center gap-2"
           >
-            {problems.map((_, index) => (
+            {filteredProblems.map((_, index) => (
               <div
                 key={index}
                 className={`w-3 h-3 rounded-full transition-all ${

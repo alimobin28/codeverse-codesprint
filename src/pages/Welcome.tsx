@@ -116,7 +116,7 @@ const Welcome = () => {
               <LogOut className="w-4 h-4 mr-2" />
               Exit
             </CodeverseButton>
-          </div>
+          </div>  
         </motion.header>
 
         {/* Story Section */}
