@@ -95,17 +95,6 @@ const Round2 = () => {
     toast.success("Round 2 started - timer is now active!");
   };
 
-  const submitAndContinue = () => {
-    if (currentProblemIndex < filteredProblems.length - 1) {
-      setLockedProblems((prev) => new Set([...prev, currentProblemIndex]));
-      setCurrentProblemIndex((prev) => prev + 1);
-      toast.success("Submitted! Moving to next problem...");
-    } else {
-      setLockedProblems((prev) => new Set([...prev, currentProblemIndex]));
-      toast.success("Round 2 complete!");
-    }
-  };
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -303,16 +292,6 @@ const Round2 = () => {
                         {getVJudgeLink(currentProblem.problem_code)}
                         <ExternalLink className="w-3 h-3" />
                       </a>
-                    </div>
-                  )}
-
-                  {!isLocked && (
-                    <div className="flex justify-end">
-                      <CodeverseButton onClick={submitAndContinue}>
-                        {currentProblemIndex < filteredProblems.length - 1
-                          ? "SUBMIT & CONTINUE"
-                          : "SUBMIT & FINISH"}
-                      </CodeverseButton>
                     </div>
                   )}
                 </div>
