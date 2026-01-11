@@ -1,9 +1,15 @@
+/* The default #root styles have been removed because 
+   they conflict with your Tailwind full-screen layout.
+*/
+
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  /* Removed max-width, margin, padding, and text-align 
+     to allow Tailwind to control the layout fully. */
+  width: 100%;
 }
+
+/* You can keep these if you are still using the spinning React logo somewhere. 
+   If not, you can delete everything below this line too. */
 
 .logo {
   height: 6em;

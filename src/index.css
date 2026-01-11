@@ -1,9 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* CodeVerse Design System - Dark Futuristic Cyber-Logic Aesthetic */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+/* ===== Typography ===== */
+.codeverse-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  /* CHANGED: Red to Neon Green */
+  color: #4ade80; 
+  text-align: center;
+  text-shadow:
+    0 0 12px rgba(74, 222, 128, 0.35),
+    0 0 40px rgba(74, 222, 128, 0.15);
+}
+
+.system-label {
+  font-family: monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+
+/* ===== Console Panel ===== */
+.system-console {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)),
+    rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow:
+    0 20px 60px rgba(0,0,0,0.7),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+}
+
+/* Soft link to background energy */
+.console-glow {
+  box-shadow: 0 0 120px rgba(34, 197, 94, 0.08);
+}
+
+/* ===== Input ===== */
+.input-label {
+  display: block;
+  font-family: monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  color: #9ca3af;
+  margin-bottom: 0.5rem;
+}
+
+.terminal-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: monospace;
+}
+
+.terminal-prompt {
+  color: #22c55e;
+  font-size: 1rem;
+}
+
+/* Improve focus feel */
+input:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.6);
+}
+
+/* ===== Primary Button ===== */
+.primary-action {
+  box-shadow:
+    /* CHANGED: Red shadow to Green shadow */
+    0 12px 30px rgba(34, 197, 94, 0.4),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+/* ===== Error ===== */
+.error-text {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: #f87171; /* Kept red for actual errors, but can be changed to #facc15 (yellow) if preferred */
+}
+
+/* ===== Admin Button ===== */
+.admin-button {
+  font-family: monospace;
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
+
+.admin-button:hover {
+  opacity: 1;
+}
 
 @layer base {
   :root {
@@ -18,8 +112,8 @@
     --popover: 240 12% 8%;
     --popover-foreground: 210 20% 90%;
     
-    /* Erevos Red - Primary */
-    --primary: 348 100% 50%;
+    /* CHANGED: Primary is now Neon Green (approx 142 hue) instead of Red (348) */
+    --primary: 142 76% 36%;
     --primary-foreground: 0 0% 100%;
     
     /* Cosmic Cyan - Secondary */
@@ -41,25 +135,29 @@
     /* Borders & Input */
     --border: 240 10% 15%;
     --input: 240 10% 12%;
-    --ring: 348 100% 50%;
+    /* CHANGED: Ring to Green */
+    --ring: 142 76% 36%;
     
     --radius: 0.5rem;
     
     /* Sidebar */
     --sidebar-background: 240 12% 5%;
     --sidebar-foreground: 210 20% 85%;
-    --sidebar-primary: 348 100% 50%;
+    --sidebar-primary: 142 76% 36%; /* Green */
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 10% 12%;
     --sidebar-accent-foreground: 210 20% 85%;
     --sidebar-border: 240 10% 15%;
-    --sidebar-ring: 348 100% 50%;
+    --sidebar-ring: 142 76% 36%; /* Green */
     
     /* CodeVerse Custom Colors */
     --codeverse-void: 240 15% 3%;
     --codeverse-space: 240 12% 6%;
-    --codeverse-erevos: 348 100% 50%;
-    --codeverse-erevos-glow: 348 100% 60%;
+    
+    /* CHANGED: 'Erevos' variables updated to Neon Green values to shift entire theme */
+    --codeverse-erevos: 120 100% 50%;
+    --codeverse-erevos-glow: 120 100% 60%;
+    
     --codeverse-cyan: 185 100% 50%;
     --codeverse-cyan-dim: 185 80% 35%;
     --codeverse-violet: 270 80% 60%;
@@ -68,13 +166,16 @@
     --codeverse-warning: 45 100% 50%;
     
     /* Gradients */
-    --gradient-erevos: linear-gradient(135deg, hsl(348 100% 50%), hsl(320 100% 40%));
+    /* CHANGED: Erevos Gradient to Green */
+    --gradient-erevos: linear-gradient(135deg, hsl(120 100% 50%), hsl(140 100% 40%));
     --gradient-cyan: linear-gradient(135deg, hsl(185 100% 50%), hsl(200 100% 40%));
     --gradient-void: linear-gradient(180deg, hsl(240 15% 3%), hsl(240 12% 8%));
-    --gradient-cosmic: linear-gradient(135deg, hsl(270 80% 60%), hsl(348 100% 50%));
+    /* CHANGED: Cosmic Gradient to include Green */
+    --gradient-cosmic: linear-gradient(135deg, hsl(270 80% 60%), hsl(120 100% 50%));
     
     /* Glow Effects */
-    --glow-erevos: 0 0 30px hsla(348, 100%, 50%, 0.5), 0 0 60px hsla(348, 100%, 50%, 0.3);
+    /* CHANGED: Erevos Glow to Green */
+    --glow-erevos: 0 0 30px hsla(120, 100%, 50%, 0.5), 0 0 60px hsla(120, 100%, 50%, 0.3);
     --glow-cyan: 0 0 30px hsla(185, 100%, 50%, 0.5), 0 0 60px hsla(185, 100%, 50%, 0.3);
     --glow-violet: 0 0 30px hsla(270, 80%, 60%, 0.5), 0 0 60px hsla(270, 80%, 60%, 0.3);
     
@@ -109,7 +210,8 @@
     position: fixed;
     inset: 0;
     background: 
-      radial-gradient(ellipse at 20% 30%, hsla(348, 100%, 50%, 0.08) 0%, transparent 50%),
+      /* CHANGED: Red accent to Green accent */
+      radial-gradient(ellipse at 20% 30%, hsla(120, 100%, 50%, 0.08) 0%, transparent 50%),
       radial-gradient(ellipse at 80% 70%, hsla(270, 80%, 60%, 0.06) 0%, transparent 50%),
       radial-gradient(ellipse at 50% 50%, hsla(185, 100%, 50%, 0.04) 0%, transparent 60%),
       linear-gradient(180deg, hsl(240, 15%, 3%) 0%, hsl(240, 12%, 5%) 100%);
@@ -195,8 +297,9 @@
     animation: pulse-glow 2s ease-in-out infinite;
   }
   
+  /* CHANGED: Erevos glow to Green */
   .text-glow-erevos {
-    text-shadow: 0 0 10px hsla(348, 100%, 50%, 0.8), 0 0 20px hsla(348, 100%, 50%, 0.5), 0 0 40px hsla(348, 100%, 50%, 0.3);
+    text-shadow: 0 0 10px hsla(120, 100%, 50%, 0.8), 0 0 20px hsla(120, 100%, 50%, 0.5), 0 0 40px hsla(120, 100%, 50%, 0.3);
   }
   
   .text-glow-cyan {
@@ -207,8 +310,9 @@
     text-shadow: 0 0 10px hsla(270, 80%, 60%, 0.8), 0 0 20px hsla(270, 80%, 60%, 0.5), 0 0 40px hsla(270, 80%, 60%, 0.3);
   }
   
+  /* CHANGED: Erevos glow to Green */
   .border-glow-erevos {
-    box-shadow: 0 0 10px hsla(348, 100%, 50%, 0.4), inset 0 0 10px hsla(348, 100%, 50%, 0.1);
+    box-shadow: 0 0 10px hsla(120, 100%, 50%, 0.4), inset 0 0 10px hsla(120, 100%, 50%, 0.1);
   }
   
   .border-glow-cyan {

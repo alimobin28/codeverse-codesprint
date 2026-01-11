@@ -11,6 +11,7 @@ import Round2 from "./pages/Round2";
 import Round3 from "./pages/Round3";
 import NotFound from "./pages/NotFound";
 
+
 const queryClient = new QueryClient();
 
 const App = () => (
