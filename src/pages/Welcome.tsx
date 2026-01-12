@@ -7,6 +7,7 @@ import { CodeverseCard } from "@/components/ui/codeverse-card";
 import { useTeamSession } from "@/hooks/useTeamSession";
 import { useRounds } from "@/hooks/useRounds";
 import { Cpu, Zap, Skull, LogOut, Shield } from "lucide-react";
+import { BroadcastBanner } from "@/components/BroadcastBanner";
 
 /* ===== STORY CONTENT ===== */
 const storyContent = {
@@ -69,7 +70,7 @@ const brand = {
   pill: "border-lime-400/30 bg-lime-500/10 text-lime-100",
   pillDot: "bg-lime-400 shadow-[0_0_10px_rgba(163,230,53,0.6)]",
   heading: "text-lime-200 drop-shadow-[0_0_5px_rgba(163,230,53,0.4)]",
-  
+
   // UPDATED: SOLID NEON GREEN BUTTON
   // Uses !important to force override the red background
   button: `
@@ -120,6 +121,9 @@ const Welcome = () => {
 
   return (
     <div className="relative min-h-screen bg-slate-950 text-slate-100 overflow-hidden">
+      {/* Broadcast Banner */}
+      <BroadcastBanner />
+
       <CosmicBackground />
 
       {/* Background Image */}
@@ -146,10 +150,10 @@ const Welcome = () => {
           </div>
 
           <div className="flex gap-3">
-            <CodeverseButton variant="outline" size="sm" onClick={() => navigate("/admin")}>
+            <CodeverseButton variant="ghost" size="sm" onClick={() => navigate("/admin")}>
               <Shield className="mr-2 h-4 w-4 text-lime-200" /> Admin
             </CodeverseButton>
-            <CodeverseButton variant="outline" size="sm" onClick={handleLogout}>
+            <CodeverseButton variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" /> Exit
             </CodeverseButton>
           </div>
@@ -190,10 +194,9 @@ const Welcome = () => {
                 key={round.number}
                 className={`
                   rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md transition
-                  ${
-                    unlocked
-                      ? "hover:border-lime-400/50 hover:shadow-[0_0_30px_-10px_rgba(163,230,53,0.3)]"
-                      : "opacity-60"
+                  ${unlocked
+                    ? "hover:border-lime-400/50 hover:shadow-[0_0_30px_-10px_rgba(163,230,53,0.3)]"
+                    : "opacity-60"
                   }
                 `}
               >
@@ -218,7 +221,7 @@ const Welcome = () => {
 
                   {/* ENTER ZONE — FIXED NEON BUTTON */}
                   <CodeverseButton
-                    variant="outline" // IMPORTANT: Clears the default red background
+                    variant="ghost"
                     size="sm"
                     disabled={!unlocked}
                     onClick={() => handleRoundClick(round.number, round.route)}

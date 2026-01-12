@@ -6,10 +6,10 @@ const Round3 = () => {
       roundNumber={3}
       title="Core Logic Confrontation"
       contestId="779643"
-      durationSeconds={55 * 60} 
-      backgroundImage="/e4.png" 
-      allowedProblems={['A', 'B', 'C', 'D', 'E']}
-      warningMessage="Critical System Failure imminent. No hints available."
+      backgroundImage="/e4.png"
+      allowedProblems={["A", "B", "C", "D", "E", "F"]}
+      warningMessage="Critical System Failure imminent. Focus is critical."
+      showHints={true} // Hints enabled for all rounds now
     />
   );
 };

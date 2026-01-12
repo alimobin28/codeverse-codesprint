@@ -1,15 +1,10 @@
-import { RoundTemplate } from "./RoundTemplate";
+import Round2Page from "./Round2Page";
 
 const Round2 = () => {
   return (
-    <RoundTemplate
-      roundNumber={2}
-      title="Failing Time Flow"
+    <Round2Page
       contestId="779643"
-      durationSeconds={55 * 60} 
-      backgroundImage="/e3.png" 
-      allowedProblems={['A', 'B', 'C', 'D', 'E']}
-      warningMessage="Temporal instability detected. Focus required."
+      backgroundImage="/e3.png"
     />
   );
 };

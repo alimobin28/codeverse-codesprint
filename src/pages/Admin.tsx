@@ -9,17 +9,25 @@ import {
   CodeverseCardHeader,
   CodeverseCardTitle,
 } from "@/components/ui/codeverse-card";
-import { useRounds } from "@/hooks/useRounds";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, Lock, Unlock, RefreshCw } from "lucide-react";
+import { Shield, RefreshCw, Settings, FileText, Lightbulb, Radio } from "lucide-react";
 import { toast } from "sonner";
+
+// Admin Components
+import { RoundControl } from "@/components/Admin/RoundControl";
+import { ProblemEditor } from "@/components/Admin/ProblemEditor";
+import { HintManager } from "@/components/Admin/HintManager";
+import { BroadcastPanel } from "@/components/Admin/BroadcastPanel";
+
+type AdminTab = "rounds" | "problems" | "hints" | "broadcast";
 
 const Admin = () => {
   const [password, setPassword] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
+  const [activeTab, setActiveTab] = useState<AdminTab>("rounds");
+  const [selectedRound, setSelectedRound] = useState<number | undefined>(undefined);
   const navigate = useNavigate();
-  const { rounds, unlockRound, refetch } = useRounds();
 
   useEffect(() => {
     const fetchAdminPassword = async () => {
@@ -28,12 +36,12 @@ const Admin = () => {
         .select("setting_value")
         .eq("setting_key", "admin_password")
         .single();
-      
+
       if (data) {
         setAdminPassword(data.setting_value || "");
       }
     };
-    
+
     fetchAdminPassword();
   }, []);
 
@@ -47,39 +55,40 @@ const Admin = () => {
     }
   };
 
-  const handleUnlockToggle = async (roundNumber: number, currentState: boolean) => {
-    const success = await unlockRound(roundNumber, !currentState);
-    if (success) {
-      toast.success(`Round ${roundNumber} ${!currentState ? "unlocked" : "locked"}`);
-    } else {
-      toast.error("Failed to update round status");
-    }
-  };
-
-  const getRound = (num: number) => rounds.find((r) => r.round_number === num);
-
   // Neon Green Glow Helpers
   const neonText = "text-lime-400 drop-shadow-[0_0_5px_rgba(163,230,53,0.8)]";
   const neonBorder = "border-lime-500/50 shadow-[0_0_15px_rgba(163,230,53,0.15)]";
+
+  const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
+    { id: "rounds", label: "Rounds", icon: <Settings className="w-4 h-4" /> },
+    { id: "problems", label: "Problems", icon: <FileText className="w-4 h-4" /> },
+    { id: "hints", label: "Hints", icon: <Lightbulb className="w-4 h-4" /> },
+    { id: "broadcast", label: "Broadcast", icon: <Radio className="w-4 h-4" /> },
+  ];
 
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <CosmicBackground />
-        
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="relative z-10 w-full max-w-md"
         >
-          <CodeverseCard variant="elevated" className={`bg-black/80 backdrop-blur-xl ${neonBorder}`}>
+          <CodeverseCard
+            variant="elevated"
+            className={`bg-black/80 backdrop-blur-xl ${neonBorder}`}
+          >
             <CodeverseCardHeader>
               <div className="flex items-center gap-3">
                 <Shield className="w-6 h-6 text-lime-400 drop-shadow-[0_0_8px_rgba(163,230,53,0.8)]" />
-                <CodeverseCardTitle className="text-lime-100">Admin Access</CodeverseCardTitle>
+                <CodeverseCardTitle className="text-lime-100">
+                  Admin Access
+                </CodeverseCardTitle>
               </div>
             </CodeverseCardHeader>
-            
+
             <form onSubmit={handleLogin} className="space-y-4">
               <CodeverseInput
                 type="password"
@@ -89,9 +98,8 @@ const Admin = () => {
                 autoFocus
                 className="border-lime-500/30 focus:border-lime-400 focus:ring-lime-500/20"
               />
-              {/* UPDATED AUTHENTICATE BUTTON */}
-              <CodeverseButton 
-                type="submit" 
+              <CodeverseButton
+                type="submit"
                 className="
                   w-full 
                   !bg-[#7BC62D] 
@@ -105,7 +113,7 @@ const Admin = () => {
                 AUTHENTICATE
               </CodeverseButton>
             </form>
-            
+
             <div className="mt-4">
               <CodeverseButton
                 variant="ghost"
@@ -125,12 +133,13 @@ const Admin = () => {
   return (
     <div className="min-h-screen p-4 md:p-8">
       <CosmicBackground />
-      
-      <div className="relative z-10 max-w-4xl mx-auto">
+
+      <div className="relative z-10 max-w-6xl mx-auto">
+        {/* Header */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-8 pb-4 border-b border-lime-500/20"
+          className="flex items-center justify-between mb-6 pb-4 border-b border-lime-500/20"
         >
           <div className="flex items-center gap-3">
             <Shield className="w-8 h-8 text-lime-500 drop-shadow-[0_0_10px_rgba(163,230,53,0.6)]" />
@@ -139,9 +148,6 @@ const Admin = () => {
             </h1>
           </div>
           <div className="flex gap-2">
-            <CodeverseButton variant="ghost" size="sm" onClick={refetch} className="text-lime-400 hover:bg-lime-500/10">
-              <RefreshCw className="w-4 h-4" />
-            </CodeverseButton>
             <CodeverseButton
               variant="ghost"
               size="sm"
@@ -153,70 +159,56 @@ const Admin = () => {
           </div>
         </motion.header>
 
-        {/* Round Controls */}
-        <div className="grid gap-6 md:grid-cols-3 mb-8">
-          {[1, 2, 3].map((num) => {
-            const round = getRound(num);
-            const isUnlocked = round?.is_unlocked || false;
-
-            return (
-              <motion.div
-                key={num}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: num * 0.1 }}
-              >
-                <CodeverseCard 
-                  variant={isUnlocked ? "active" : "default"}
-                  className={`transition-all duration-300 ${isUnlocked ? "border-lime-500 shadow-[0_0_30px_rgba(163,230,53,0.15)] bg-lime-950/20" : "border-white/10"}`}
-                >
-                  <CodeverseCardHeader>
-                    <CodeverseCardTitle className={`text-lg ${isUnlocked ? "text-lime-300" : "text-gray-400"}`}>
-                      Round {num}
-                    </CodeverseCardTitle>
-                  </CodeverseCardHeader>
-                  
-                  <div className="space-y-4">
-                    <div className={`flex items-center justify-between p-3 rounded-lg border ${isUnlocked ? "bg-lime-500/10 border-lime-500/30" : "bg-black/40 border-white/5"}`}>
-                      <span className="text-sm font-mono text-gray-400">Status</span>
-                      <span
-                        className={`text-sm font-bold tracking-wider ${
-                          isUnlocked ? neonText : "text-gray-500"
-                        }`}
-                      >
-                        {isUnlocked ? "UNLOCKED" : "LOCKED"}
-                      </span>
-                    </div>
-                    
-                    <CodeverseButton
-                      variant="outline"
-                      size="sm"
-                      className={`w-full font-bold transition-all duration-300 ${
-                        isUnlocked 
-                          ? "!bg-lime-500 !text-black hover:!bg-lime-400 hover:scale-[1.02] shadow-[0_0_15px_rgba(163,230,53,0.5)] border-transparent" 
-                          : "border-lime-500/30 text-lime-500 hover:bg-lime-500/10 hover:border-lime-400"
-                      }`}
-                      onClick={() => handleUnlockToggle(num, isUnlocked)}
-                    >
-                      {isUnlocked ? (
-                        <>
-                          <Lock className="w-4 h-4 mr-2" />
-                          LOCK ROUND
-                        </>
-                      ) : (
-                        <>
-                          <Unlock className="w-4 h-4 mr-2" />
-                          UNLOCK ROUND
-                        </>
-                      )}
-                    </CodeverseButton>
-                  </div>
-                </CodeverseCard>
-              </motion.div>
-            );
-          })}
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6 p-1 bg-black/40 rounded-lg border border-white/10 w-fit">
+          {tabs.map((tab) => (
+            <CodeverseButton
+              key={tab.id}
+              variant={activeTab === tab.id ? "primary" : "ghost"}
+              size="sm"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 ${activeTab === tab.id
+                ? "bg-lime-500 text-black"
+                : "text-gray-400 hover:text-white"
+                }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </CodeverseButton>
+          ))}
         </div>
 
+        {/* Round Filter for Problems */}
+        {activeTab === "problems" && (
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-sm text-gray-400">Filter by Round:</span>
+            <select
+              value={selectedRound || ""}
+              onChange={(e) =>
+                setSelectedRound(e.target.value ? parseInt(e.target.value) : undefined)
+              }
+              className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-lime-500/50 focus:outline-none"
+            >
+              <option value="">All Rounds</option>
+              <option value="1">Round 1</option>
+              <option value="2">Round 2</option>
+              <option value="3">Round 3</option>
+            </select>
+          </div>
+        )}
+
+        {/* Tab Content */}
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {activeTab === "rounds" && <RoundControl />}
+          {activeTab === "problems" && <ProblemEditor roundNumber={selectedRound} />}
+          {activeTab === "hints" && <HintManager />}
+          {activeTab === "broadcast" && <BroadcastPanel />}
+        </motion.div>
       </div>
     </div>
   );

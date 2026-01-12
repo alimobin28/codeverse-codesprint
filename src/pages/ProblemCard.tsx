@@ -1,20 +1,89 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, ExternalLink, Lightbulb } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink, Lightbulb, Clock } from "lucide-react";
 import {
   CodeverseCard,
   CodeverseCardContent,
 } from "@/components/ui/codeverse-card";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Hint {
+  id: string;
+  content: string;
+  unlock_after_minutes: number;
+  sort_order: number;
+}
 
 interface ProblemCardProps {
   problem: any;
   contestId: string;
   index: number;
+  showHints?: boolean;
+  roundStartTime?: string | null; // Timer start time for time-gated hints
 }
 
-export const ProblemCard = ({ problem, contestId, index }: ProblemCardProps) => {
+export const ProblemCard = ({
+  problem,
+  contestId,
+  index,
+  showHints = true,
+  roundStartTime
+}: ProblemCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [hints, setHints] = useState<Hint[]>([]);
+  const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const vjudgeLink = `https://vjudge.net/contest/${contestId}#problem/${problem.problem_code}`;
+
+  // Fetch hints for this problem
+  useEffect(() => {
+    const fetchHints = async () => {
+      const { data, error } = await supabase
+        .from("hints")
+        .select("*")
+        .eq("problem_id", problem.id)
+        .order("sort_order", { ascending: true });
+
+      if (!error && data) {
+        setHints(data);
+      }
+    };
+
+    if (showHints && problem.id) {
+      fetchHints();
+    }
+  }, [problem.id, showHints]);
+
+  // Track elapsed time for time-gated hints
+  useEffect(() => {
+    if (!roundStartTime) return;
+
+    const calculateElapsed = () => {
+      const startTime = new Date(roundStartTime).getTime();
+      const now = Date.now();
+      const elapsed = Math.floor((now - startTime) / 1000 / 60); // minutes
+      setElapsedMinutes(elapsed);
+    };
+
+    calculateElapsed();
+    const interval = setInterval(calculateElapsed, 30000); // Update every 30 seconds
+    return () => clearInterval(interval);
+  }, [roundStartTime]);
+
+  // Filter hints based on unlock time
+  // Hints with unlock_after_minutes = 0 or null should always show
+  const availableHints = hints.filter((hint) => {
+    const unlockTime = hint.unlock_after_minutes ?? 0;
+    if (unlockTime === 0) return true; // Always show immediate hints
+    if (!roundStartTime) return true; // Show all if no timer started
+    return elapsedMinutes >= unlockTime;
+  });
+
+  const lockedHints = hints.filter((hint) => {
+    const unlockTime = hint.unlock_after_minutes ?? 0;
+    if (unlockTime === 0) return false; // 0-minute hints are never locked
+    if (!roundStartTime) return false;
+    return elapsedMinutes < unlockTime;
+  });
 
   return (
     <motion.div
@@ -24,16 +93,14 @@ export const ProblemCard = ({ problem, contestId, index }: ProblemCardProps) => 
     >
       <CodeverseCard
         variant="default"
-        className={`cursor-pointer transition-all duration-300 ${
-          isExpanded ? "bg-black/80 border-primary/50" : "bg-black/60 border-white/10"
-        } backdrop-blur-xl`}
+        className={`cursor-pointer transition-all duration-300 ${isExpanded ? "bg-black/80 border-primary/50" : "bg-black/60 border-white/10"
+          } backdrop-blur-xl`}
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-display font-bold text-lg ${
-              isExpanded ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
-            }`}>
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-display font-bold text-lg ${isExpanded ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
+              }`}>
               {problem.problem_code}
             </div>
             <div>
@@ -83,7 +150,38 @@ export const ProblemCard = ({ problem, contestId, index }: ProblemCardProps) => 
                     </a>
                   </div>
 
-                  {problem.guidance && (
+                  {/* Show hints from hints table */}
+                  {showHints && availableHints.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold text-yellow-500 flex items-center gap-2">
+                        <Lightbulb className="w-4 h-4" />
+                        HINTS ({availableHints.length})
+                      </h4>
+                      {availableHints.map((hint, idx) => (
+                        <div
+                          key={hint.id}
+                          className="p-3 bg-yellow-500/5 rounded-lg border border-yellow-500/20"
+                        >
+                          <p className="text-sm font-mono text-gray-400">
+                            <span className="text-yellow-500 font-bold">Hint {idx + 1}:</span> {hint.content}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Show locked hints info */}
+                  {showHints && lockedHints.length > 0 && (
+                    <div className="p-3 bg-gray-500/10 rounded-lg border border-gray-500/20">
+                      <p className="text-sm text-gray-500 flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        {lockedHints.length} more hint(s) will unlock later
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Fallback to guidance field if no hints */}
+                  {showHints && availableHints.length === 0 && problem.guidance && (
                     <div className="p-4 bg-yellow-500/5 rounded-lg border border-yellow-500/20">
                       <h4 className="text-sm font-semibold text-yellow-500 mb-2 flex items-center gap-2">
                         <Lightbulb className="w-4 h-4" />
