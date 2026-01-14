@@ -19,12 +19,28 @@ export const useTeamSession = () => {
         .eq("session_id", sessionId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Only clear session if the team was truly not found
+        // PGRST116 is "The result contains 0 rows" (single() returned nothing)
+        if (error.code === "PGRST116" || error.code === "406") {
+          console.warn("Session invalid, clearing.");
+          localStorage.removeItem(SESSION_KEY);
+          return null;
+        }
+        // For other errors (network, etc), throw to keep the loading state or handle gracefully
+        // but DO NOT logout the user.
+        throw error;
+      }
       setTeam(data);
       return data;
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error loading team:", err);
-      localStorage.removeItem(SESSION_KEY);
+      // Only clear if we explicitly decided to above, otherwise keep session
+      if (!localStorage.getItem(SESSION_KEY)) {
+        return null;
+      }
+      // If network error, we might want to return null but NOT clear storage
+      // so the user can refresh later.
       return null;
     }
   }, []);
@@ -49,7 +65,7 @@ export const useTeamSession = () => {
   const createTeam = async (teamName: string): Promise<Team | null> => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Check if team already exists
       const { data: existingTeam } = await supabase

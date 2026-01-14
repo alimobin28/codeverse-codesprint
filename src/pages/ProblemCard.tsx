@@ -20,6 +20,7 @@ interface ProblemCardProps {
   index: number;
   showHints?: boolean;
   roundStartTime?: string | null; // Timer start time for time-gated hints
+  vjudgeUrl?: string | null;
 }
 
 export const ProblemCard = ({
@@ -27,12 +28,16 @@ export const ProblemCard = ({
   contestId,
   index,
   showHints = true,
-  roundStartTime
+  roundStartTime,
+  vjudgeUrl
 }: ProblemCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [hints, setHints] = useState<Hint[]>([]);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
-  const vjudgeLink = `https://vjudge.net/contest/${contestId}#problem/${problem.problem_code}`;
+
+  const vjudgeLink = vjudgeUrl
+    ? `${vjudgeUrl}#problem/${problem.problem_code}`
+    : `https://vjudge.net/contest/${contestId}#problem/${problem.problem_code}`;
 
   // Fetch hints for this problem
   useEffect(() => {
@@ -129,9 +134,10 @@ export const ProblemCard = ({
                     <h4 className="text-sm font-semibold text-primary mb-2">
                       PROBLEM STATEMENT
                     </h4>
-                    <p className="text-sm font-mono text-gray-300 leading-relaxed whitespace-pre-wrap">
-                      {problem.statement}
-                    </p>
+                    <div
+                      className="text-sm font-mono text-gray-300 leading-relaxed prose prose-invert max-w-none prose-p:my-2 prose-headings:text-lime-400 prose-pre:bg-gray-800 prose-pre:p-2 prose-pre:rounded-md"
+                      dangerouslySetInnerHTML={{ __html: problem.statement }}
+                    />
                   </div>
 
                   <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 group hover:border-primary/40 transition-colors">

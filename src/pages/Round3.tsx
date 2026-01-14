@@ -5,7 +5,6 @@ const Round3 = () => {
     <RoundTemplate
       roundNumber={3}
       title="Core Logic Confrontation"
-      contestId="779643"
       backgroundImage="/e4.png"
       allowedProblems={["A", "B", "C", "D", "E", "F"]}
       warningMessage="Critical System Failure imminent. Focus is critical."

@@ -18,7 +18,7 @@ import {
 import { BroadcastBanner } from "@/components/BroadcastBanner";
 
 interface Round2PageProps {
-    contestId: string;
+    contestId?: string; // Now optional - use vjudge_url from database
     backgroundImage?: string;
 }
 
@@ -117,8 +117,13 @@ const Round2Page = ({ contestId, backgroundImage }: Round2PageProps) => {
     const currentIndex = currentProblemData.index;
     const problemTimeRemaining = currentProblemData.timeRemaining;
 
+    // Use dynamic vjudge_url from round if available, otherwise fallback to contestId
     const vjudgeLink = currentProblem
-        ? `https://vjudge.net/contest/${contestId}#problem/${currentProblem.problem_code}`
+        ? (round?.vjudge_url
+            ? `${round.vjudge_url}#problem/${currentProblem.problem_code}`
+            : (contestId
+                ? `https://vjudge.net/contest/${contestId}#problem/${currentProblem.problem_code}`
+                : ""))
         : "";
 
     if (loading) {
@@ -352,9 +357,10 @@ const Round2Page = ({ contestId, backgroundImage }: Round2PageProps) => {
                                 <CodeverseCardContent className="p-0 space-y-4">
                                     <div>
                                         <h4 className="text-sm font-semibold text-orange-400 mb-2">PROBLEM STATEMENT</h4>
-                                        <p className="text-sm font-mono text-gray-300 leading-relaxed whitespace-pre-wrap">
-                                            {currentProblem.statement}
-                                        </p>
+                                        <div
+                                            className="text-sm font-mono text-gray-300 leading-relaxed prose prose-invert max-w-none"
+                                            dangerouslySetInnerHTML={{ __html: currentProblem.statement }}
+                                        />
                                     </div>
 
                                     <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">

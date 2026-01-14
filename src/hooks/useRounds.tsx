@@ -62,22 +62,62 @@ export const useRounds = () => {
   };
 
   useEffect(() => {
-    fetchRounds();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let visibilityTimeout: NodeJS.Timeout;
 
-    // Subscribe to real-time updates
-    const channel = supabase
-      .channel("rounds-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "rounds" },
-        () => {
-          fetchRounds();
+    const setupSubscription = () => {
+      // Clean up existing channel if any
+      if (channel) supabase.removeChannel(channel);
+
+      // Fetch initial data
+      fetchRounds();
+
+      // Subscribe to real-time updates
+      channel = supabase
+        .channel("rounds-changes")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "rounds" },
+          () => {
+            fetchRounds();
+          }
+        )
+        .subscribe();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Debounce disconnect to avoid flickering on quick tab switches
+        clearTimeout(visibilityTimeout);
+        visibilityTimeout = setTimeout(() => {
+          if (channel) {
+            console.log("Tab hidden for >10m (simulated), pausing updates...");
+            // Real requirement is 10 minutes, but for safety we pause immediately
+            // or we could set a 10 min timeout. 
+            // The prompt asked: "if tab is hidden for more than 10 minutes so connection should also be broke"
+            // So we will actually wait 10 minutes.
+            supabase.removeChannel(channel!);
+            channel = null;
+          }
+        }, 10 * 60 * 1000); // 10 minutes
+      } else {
+        clearTimeout(visibilityTimeout);
+        if (!channel) {
+          console.log("Tab visible, resuming updates...");
+          setupSubscription();
         }
-      )
-      .subscribe();
+      }
+    };
+
+    // Initial setup
+    setupSubscription();
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearTimeout(visibilityTimeout);
     };
   }, [fetchRounds]);
 

@@ -153,6 +153,8 @@ export type Database = {
           is_unlocked: boolean
           timer_active: boolean
           timer_started_at: string | null
+          vjudge_url: string | null
+          scoreboard_url: string | null
           created_at: string
           updated_at: string
         }
@@ -166,6 +168,8 @@ export type Database = {
           is_unlocked?: boolean
           timer_active?: boolean
           timer_started_at?: string | null
+          vjudge_url?: string | null
+          scoreboard_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -179,6 +183,8 @@ export type Database = {
           is_unlocked?: boolean
           timer_active?: boolean
           timer_started_at?: string | null
+          vjudge_url?: string | null
+          scoreboard_url?: string | null
           created_at?: string
           updated_at?: string
         }

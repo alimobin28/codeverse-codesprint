@@ -5,14 +5,14 @@ import { CodeverseButton } from "@/components/ui/codeverse-button";
 import { useTeamSession } from "@/hooks/useTeamSession";
 import { useRounds } from "@/hooks/useRounds";
 import { useProblems } from "@/hooks/useProblems";
-import { ArrowLeft, Clock, Lightbulb, AlertTriangle, Lock, XCircle } from "lucide-react";
+import { ArrowLeft, Clock, Lightbulb, AlertTriangle, Lock, XCircle, Trophy } from "lucide-react";
 import { ProblemCard } from "./ProblemCard";
 import { BroadcastBanner } from "@/components/BroadcastBanner";
 
 interface RoundTemplateProps {
   roundNumber: number;
   title: string;
-  contestId: string;
+  contestId?: string; // Now optional - prefer vjudge_url from database
   backgroundImage?: string;
   allowedProblems?: string[];
   warningMessage?: string;
@@ -35,6 +35,11 @@ export const RoundTemplate = ({
 
   const round = getRound(roundNumber);
   const loading = teamLoading || roundsLoading || problemsLoading;
+
+  // Use dynamic VJudge URL if available, otherwise fallback to constructing it from contestId
+  const vjudgeUrl = round?.vjudge_url
+    ? round.vjudge_url
+    : `https://vjudge.net/contest/${contestId}`;
 
   // Calculate time remaining based on admin timer settings
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
@@ -218,9 +223,22 @@ export const RoundTemplate = ({
 
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <span className="text-sm text-primary font-mono tracking-widest bg-black/50 px-2 py-1 rounded">
-                ROUND {roundNumber}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-primary font-mono tracking-widest bg-black/50 px-2 py-1 rounded">
+                  ROUND {roundNumber}
+                </span>
+                {round?.scoreboard_url && (
+                  <CodeverseButton
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10"
+                    onClick={() => window.open(round.scoreboard_url!, '_blank')}
+                  >
+                    <Trophy className="w-3 h-3 mr-2" />
+                    SCOREBOARD
+                  </CodeverseButton>
+                )}
+              </div>
               <h1 className="font-display text-3xl md:text-4xl font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mt-2">
                 {title}
               </h1>
@@ -269,6 +287,7 @@ export const RoundTemplate = ({
               key={problem.id}
               problem={problem}
               contestId={contestId}
+              vjudgeUrl={vjudgeUrl}
               index={index}
               showHints={showHints}
               roundStartTime={round?.timer_started_at}

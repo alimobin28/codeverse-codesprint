@@ -203,6 +203,10 @@ CREATE POLICY "Public manage broadcasts" ON public.broadcasts FOR ALL USING (tru
 -- Enable Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE public.broadcasts;
 
+ALTER TABLE rounds 
+ADD COLUMN vjudge_url TEXT DEFAULT NULL,
+ADD COLUMN scoreboard_url TEXT DEFAULT NULL;
+
 -- ============================
 -- END OF SCHEMA
 -- ============================
