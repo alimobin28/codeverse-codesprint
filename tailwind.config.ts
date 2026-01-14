@@ -99,10 +99,10 @@ export default {
           "54%": { opacity: "0.9" },
         },
         "glow-pulse": {
-          "0%, 100%": { 
+          "0%, 100%": {
             boxShadow: "0 0 20px hsla(348, 100%, 50%, 0.4), 0 0 40px hsla(348, 100%, 50%, 0.2)",
           },
-          "50%": { 
+          "50%": {
             boxShadow: "0 0 30px hsla(348, 100%, 50%, 0.6), 0 0 60px hsla(348, 100%, 50%, 0.4)",
           },
         },
@@ -116,5 +116,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config;

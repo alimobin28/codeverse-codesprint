@@ -358,7 +358,7 @@ const Round2Page = ({ contestId, backgroundImage }: Round2PageProps) => {
                                     <div>
                                         <h4 className="text-sm font-semibold text-orange-400 mb-2">PROBLEM STATEMENT</h4>
                                         <div
-                                            className="text-sm font-mono text-gray-300 leading-relaxed prose prose-invert max-w-none"
+                                            className="problem-statement text-sm font-mono text-gray-300 leading-relaxed"
                                             dangerouslySetInnerHTML={{ __html: currentProblem.statement }}
                                         />
                                     </div>

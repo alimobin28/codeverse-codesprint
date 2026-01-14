@@ -135,7 +135,7 @@ export const ProblemCard = ({
                       PROBLEM STATEMENT
                     </h4>
                     <div
-                      className="text-sm font-mono text-gray-300 leading-relaxed prose prose-invert max-w-none prose-p:my-2 prose-headings:text-lime-400 prose-pre:bg-gray-800 prose-pre:p-2 prose-pre:rounded-md"
+                      className="problem-statement text-sm font-mono text-gray-300 leading-relaxed"
                       dangerouslySetInnerHTML={{ __html: problem.statement }}
                     />
                   </div>
