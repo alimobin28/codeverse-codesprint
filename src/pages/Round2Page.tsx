@@ -80,18 +80,9 @@ const Round2Page = ({ contestId, backgroundImage }: Round2PageProps) => {
             const elapsed = Math.floor((now - startTime) / 1000);
             setElapsedSeconds(elapsed);
 
-            // Auto-stop timer when all problems complete
-            if (elapsed >= totalDurationSeconds && round.timer_active) {
-                try {
-                    const { supabase } = await import("@/integrations/supabase/client");
-                    await supabase
-                        .from("rounds")
-                        .update({ timer_active: false })
-                        .eq("round_number", 2);
-                } catch (err) {
-                    console.error("Failed to auto-stop timer:", err);
-                }
-            }
+            // NOTE: We do NOT auto-stop the timer in the database from the client side.
+            // This prevents a user with a fast system clock from ending the round for everyone.
+            // When elapsed >= totalDurationSeconds, the UI will simply show "Round Ended" locally.
         };
 
         calculateElapsed();

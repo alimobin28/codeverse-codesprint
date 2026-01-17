@@ -128,17 +128,12 @@ export const ProblemCard = ({
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
-              <div className="mt-6 pt-6 border-t border-white/10">
+              <div className="mt-2 pt-2 border-t border-white/10">
                 <CodeverseCardContent className="p-0 space-y-4">
-                  <div>
-                    <h4 className="text-sm font-semibold text-primary mb-2">
-                      PROBLEM STATEMENT
-                    </h4>
-                    <div
-                      className="problem-statement text-sm font-mono text-gray-300 leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: problem.statement }}
-                    />
-                  </div>
+                  <div
+                    className="problem-statement text-sm font-mono text-gray-300 leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: problem.statement }}
+                  />
 
                   <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 group hover:border-primary/40 transition-colors">
                     <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">

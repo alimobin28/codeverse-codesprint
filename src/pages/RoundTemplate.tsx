@@ -61,18 +61,9 @@ export const RoundTemplate = ({
       const remaining = Math.max(0, durationSeconds - elapsedSeconds);
       setTimeRemaining(remaining);
 
-      // Auto-stop timer when time expires
-      if (remaining <= 0 && round.timer_active) {
-        try {
-          const { supabase } = await import("@/integrations/supabase/client");
-          await supabase
-            .from("rounds")
-            .update({ timer_active: false })
-            .eq("round_number", roundNumber);
-        } catch (err) {
-          console.error("Failed to auto-stop timer:", err);
-        }
-      }
+      // NOTE: We do NOT auto-stop the timer in the database from the client side.
+      // This prevents a user with a fast system clock from ending the round for everyone.
+      // When remaining <= 0, the UI will simply show "Round Ended" locally.
     };
 
     calculateRemaining();
