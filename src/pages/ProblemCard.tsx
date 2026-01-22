@@ -21,6 +21,7 @@ interface ProblemCardProps {
   showHints?: boolean;
   roundStartTime?: string | null; // Timer start time for time-gated hints
   vjudgeUrl?: string | null;
+  forceExpanded?: boolean;
 }
 
 export const ProblemCard = ({
@@ -29,15 +30,23 @@ export const ProblemCard = ({
   index,
   showHints = true,
   roundStartTime,
-  vjudgeUrl
+  vjudgeUrl,
+  forceExpanded = false
 }: ProblemCardProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(forceExpanded);
   const [hints, setHints] = useState<Hint[]>([]);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
 
   const vjudgeLink = vjudgeUrl
     ? `${vjudgeUrl}#problem/${problem.problem_code}`
     : `https://vjudge.net/contest/${contestId}#problem/${problem.problem_code}`;
+
+  // Update expanded state if forceExpanded changes
+  useEffect(() => {
+    if (forceExpanded) {
+      setIsExpanded(true);
+    }
+  }, [forceExpanded]);
 
   // Fetch hints for this problem
   useEffect(() => {
@@ -58,54 +67,43 @@ export const ProblemCard = ({
     }
   }, [problem.id, showHints]);
 
-  // Track elapsed time for time-gated hints
+  // Timer logic for hint unlocking
   useEffect(() => {
-    if (!roundStartTime) return;
+    if (!roundStartTime) {
+      setElapsedMinutes(0);
+      return;
+    }
 
     const calculateElapsed = () => {
-      const startTime = new Date(roundStartTime).getTime();
+      const start = new Date(roundStartTime).getTime();
       const now = Date.now();
-      const elapsed = Math.floor((now - startTime) / 1000 / 60); // minutes
-      setElapsedMinutes(elapsed);
+      const minutes = Math.floor((now - start) / 1000 / 60);
+      setElapsedMinutes(minutes);
     };
 
     calculateElapsed();
-    const interval = setInterval(calculateElapsed, 30000); // Update every 30 seconds
+    const interval = setInterval(calculateElapsed, 60000); // Check every minute
     return () => clearInterval(interval);
   }, [roundStartTime]);
 
-  // Filter hints based on unlock time
-  // Hints with unlock_after_minutes = 0 or null should always show
-  const availableHints = hints.filter((hint) => {
-    const unlockTime = hint.unlock_after_minutes ?? 0;
-    if (unlockTime === 0) return true; // Always show immediate hints
-    if (!roundStartTime) return true; // Show all if no timer started
-    return elapsedMinutes >= unlockTime;
-  });
-
-  const lockedHints = hints.filter((hint) => {
-    const unlockTime = hint.unlock_after_minutes ?? 0;
-    if (unlockTime === 0) return false; // 0-minute hints are never locked
-    if (!roundStartTime) return false;
-    return elapsedMinutes < unlockTime;
-  });
+  const availableHints = hints.filter(h => elapsedMinutes >= h.unlock_after_minutes);
+  const lockedHints = hints.filter(h => elapsedMinutes < h.unlock_after_minutes);
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.1 * index }}
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-4"
     >
-      <CodeverseCard
-        variant="default"
-        className={`cursor-pointer transition-all duration-300 ${isExpanded ? "bg-black/80 border-primary/50" : "bg-black/60 border-white/10"
-          } backdrop-blur-xl`}
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex items-center justify-between">
+      <CodeverseCard className="overflow-hidden bg-black/80 border-primary/20 backdrop-blur-sm hover:border-primary/40 transition-colors">
+        {/* Header - Click to expand if not forced */}
+        <div
+          className={`p-4 flex items-center justify-between ${!forceExpanded ? "cursor-pointer" : ""}`}
+          onClick={() => !forceExpanded && setIsExpanded(!isExpanded)}
+        >
           <div className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-display font-bold text-lg ${isExpanded ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
-              }`}>
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-display font-bold text-lg ${isExpanded ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"}`}>
               {problem.problem_code}
             </div>
             <div>
@@ -115,6 +113,7 @@ export const ProblemCard = ({
               </p>
             </div>
           </div>
+
           <div className="text-muted-foreground">
             {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </div>
@@ -123,19 +122,20 @@ export const ProblemCard = ({
         <AnimatePresence>
           {isExpanded && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
             >
               <div className="mt-2 pt-2 border-t border-white/10">
                 <CodeverseCardContent className="p-0 space-y-4">
-                  <div
-                    className="problem-statement text-sm font-mono text-gray-300 leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: problem.statement }}
-                  />
+                  <div>
+                    <div
+                      className="problem-statement text-sm font-mono text-gray-300 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: problem.statement }}
+                    />
+                  </div>
 
-                  <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 group hover:border-primary/40 transition-colors">
+                  <div className="p-3 bg-primary/10 rounded-lg border border-primary/20 group hover:border-primary/40 transition-colors">
                     <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
                       <ExternalLink className="w-4 h-4" />
                       VJUDGE LINK
@@ -151,46 +151,49 @@ export const ProblemCard = ({
                     </a>
                   </div>
 
-                  {/* Show hints from hints table */}
-                  {showHints && availableHints.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-semibold text-yellow-500 flex items-center gap-2">
-                        <Lightbulb className="w-4 h-4" />
-                        HINTS ({availableHints.length})
-                      </h4>
-                      {availableHints.map((hint, idx) => (
-                        <div
-                          key={hint.id}
-                          className="p-3 bg-yellow-500/5 rounded-lg border border-yellow-500/20"
-                        >
-                          <p className="text-sm font-mono text-gray-400">
-                            <span className="text-yellow-500 font-bold">Hint {idx + 1}:</span> {hint.content}
+                  {/* Hints Section */}
+                  {showHints && (
+                    <div className="space-y-3 pt-2">
+                      {availableHints.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold text-yellow-500 flex items-center gap-2">
+                            <Lightbulb className="w-4 h-4" />
+                            HINTS ({availableHints.length})
+                          </h4>
+                          {availableHints.map((hint, idx) => (
+                            <div
+                              key={hint.id}
+                              className="p-3 bg-yellow-500/5 rounded-lg border border-yellow-500/20"
+                            >
+                              <p className="text-sm font-mono text-gray-400">
+                                <span className="text-yellow-500 font-bold">Hint {idx + 1}:</span> {hint.content}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {lockedHints.length > 0 && (
+                        <div className="p-3 bg-gray-500/10 rounded-lg border border-gray-500/20">
+                          <p className="text-sm text-gray-500 flex items-center gap-2">
+                            <Clock className="w-4 h-4" />
+                            {lockedHints.length} more hint(s) will unlock later
                           </p>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      )}
 
-                  {/* Show locked hints info */}
-                  {showHints && lockedHints.length > 0 && (
-                    <div className="p-3 bg-gray-500/10 rounded-lg border border-gray-500/20">
-                      <p className="text-sm text-gray-500 flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        {lockedHints.length} more hint(s) will unlock later
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Fallback to guidance field if no hints */}
-                  {showHints && availableHints.length === 0 && problem.guidance && (
-                    <div className="p-4 bg-yellow-500/5 rounded-lg border border-yellow-500/20">
-                      <h4 className="text-sm font-semibold text-yellow-500 mb-2 flex items-center gap-2">
-                        <Lightbulb className="w-4 h-4" />
-                        GUIDANCE
-                      </h4>
-                      <p className="text-sm font-mono text-gray-400">
-                        {problem.guidance}
-                      </p>
+                      {/* Guidance Fallback */}
+                      {availableHints.length === 0 && problem.guidance && (
+                        <div className="p-3 bg-yellow-500/5 rounded-lg border border-yellow-500/20">
+                          <h4 className="text-sm font-semibold text-yellow-500 mb-2 flex items-center gap-2">
+                            <Lightbulb className="w-4 h-4" />
+                            GUIDANCE
+                          </h4>
+                          <p className="text-sm font-mono text-gray-400">
+                            {problem.guidance}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CodeverseCardContent>

@@ -156,7 +156,7 @@ export const RoundControl = () => {
                                         <CodeverseCardTitle
                                             className={`text-lg ${isUnlocked ? "text-lime-300" : "text-gray-400"}`}
                                         >
-                                            Round {num}: {round?.title || `Round ${num}`}
+                                            {round?.title || `Round ${num}`}
                                         </CodeverseCardTitle>
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs text-gray-500">

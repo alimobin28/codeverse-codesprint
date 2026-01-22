@@ -14,7 +14,9 @@ import {
     ExternalLink,
     Timer,
     XCircle,
+    Trophy,
 } from "lucide-react";
+import { ProblemCard } from "./ProblemCard";
 import { BroadcastBanner } from "@/components/BroadcastBanner";
 
 interface Round2PageProps {
@@ -245,9 +247,22 @@ const Round2Page = ({ contestId, backgroundImage }: Round2PageProps) => {
 
                     <div className="flex items-center justify-between flex-wrap gap-4">
                         <div>
-                            <span className="text-sm text-primary font-mono tracking-widest bg-black/50 px-2 py-1 rounded">
-                                ROUND 2 - SEQUENTIAL
-                            </span>
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm text-primary font-mono tracking-widest bg-black/50 px-2 py-1 rounded">
+                                    ROUND 2 - SEQUENTIAL
+                                </span>
+                                {round?.scoreboard_url && (
+                                    <CodeverseButton
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10"
+                                        onClick={() => window.open(round.scoreboard_url!, '_blank')}
+                                    >
+                                        <Trophy className="w-3 h-3 mr-2" />
+                                        SCOREBOARD
+                                    </CodeverseButton>
+                                )}
+                            </div>
                             <h1 className="font-display text-3xl md:text-4xl font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mt-2">
                                 Failing Time Flow
                             </h1>
@@ -330,56 +345,15 @@ const Round2Page = ({ contestId, backgroundImage }: Round2PageProps) => {
                             exit={{ opacity: 0, x: -50 }}
                             transition={{ duration: 0.3 }}
                         >
-                            <CodeverseCard className="bg-black/80 border-orange-500/30 backdrop-blur-xl">
-                                <div className="flex items-center gap-4 mb-6">
-                                    <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center font-display font-bold text-xl text-orange-400">
-                                        {currentProblem.problem_code}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-display text-xl font-semibold text-white">
-                                            {currentProblem.title}
-                                        </h3>
-                                        <p className="text-sm text-gray-400 font-mono">
-                                            Time Limit: {Math.floor((currentProblem.individual_time_limit_seconds || 600) / 60)} minutes
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <CodeverseCardContent className="p-0 space-y-4">
-                                    <div>
-                                        <h4 className="text-sm font-semibold text-orange-400 mb-2">PROBLEM STATEMENT</h4>
-                                        <div
-                                            className="problem-statement text-sm font-mono text-gray-300 leading-relaxed"
-                                            dangerouslySetInnerHTML={{ __html: currentProblem.statement }}
-                                        />
-                                    </div>
-
-                                    <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
-                                        <h4 className="text-sm font-semibold text-orange-400 mb-2 flex items-center gap-2">
-                                            <ExternalLink className="w-4 h-4" />
-                                            VJUDGE LINK
-                                        </h4>
-                                        <a
-                                            href={vjudgeLink}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-sm font-mono text-orange-300 hover:text-orange-200 break-all"
-                                        >
-                                            {vjudgeLink}
-                                        </a>
-                                    </div>
-
-                                    {/* Show guidance/hints if available */}
-                                    {currentProblem.guidance && (
-                                        <div className="p-4 bg-yellow-500/5 rounded-lg border border-yellow-500/20">
-                                            <h4 className="text-sm font-semibold text-yellow-500 mb-2">GUIDANCE</h4>
-                                            <p className="text-sm font-mono text-gray-400">
-                                                {currentProblem.guidance}
-                                            </p>
-                                        </div>
-                                    )}
-                                </CodeverseCardContent>
-                            </CodeverseCard>
+                            <ProblemCard
+                                problem={currentProblem}
+                                contestId={contestId || ""}
+                                index={currentIndex}
+                                showHints={true}
+                                roundStartTime={round?.timer_started_at}
+                                vjudgeUrl={round?.vjudge_url || undefined}
+                                forceExpanded={true}
+                            />
                         </motion.div>
                     )}
                 </AnimatePresence>

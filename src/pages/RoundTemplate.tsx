@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { CodeverseButton } from "@/components/ui/codeverse-button";
 import { useTeamSession } from "@/hooks/useTeamSession";
 import { useRounds } from "@/hooks/useRounds";
@@ -36,40 +36,79 @@ export const RoundTemplate = ({
   const round = getRound(roundNumber);
   const loading = teamLoading || roundsLoading || problemsLoading;
 
+  // --- Logic for Sequential/Synchronized Mode (Round 2) ---
+  const isSequential = roundNumber === 2;
+
+  // Sort problems by sort_order
+  const sortedProblems = useMemo(() => {
+    // If specific allowed problems are passed, use them, otherwise use all
+    const baseList = allowedProblems
+      ? problems.filter((p) => allowedProblems.includes(p.problem_code))
+      : problems;
+    return [...baseList].sort((a, b) => a.sort_order - b.sort_order);
+  }, [problems, allowedProblems]);
+
   // Use dynamic VJudge URL if available, otherwise fallback to constructing it from contestId
   const vjudgeUrl = round?.vjudge_url
     ? round.vjudge_url
     : `https://vjudge.net/contest/${contestId}`;
 
-  // Calculate time remaining based on admin timer settings
+  // Time calculations
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
-  const durationSeconds = useMemo(() => {
-    return (round?.duration_minutes || 60) * 60;
-  }, [round?.duration_minutes]);
+  // Sequential Mode State
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const totalDurationSeconds = useMemo(() => {
+    if (!isSequential) return (round?.duration_minutes || 60) * 60;
+    return sortedProblems.reduce(
+      (sum, p) => sum + (p.individual_time_limit_seconds || 600),
+      0
+    );
+  }, [round?.duration_minutes, sortedProblems, isSequential]);
 
+  const currentProblemData = useMemo(() => {
+    if (!isSequential) return { index: -1, problem: null, timeRemaining: 0 };
+
+    if (!round?.timer_started_at || !round?.timer_active) {
+      return { index: 0, problem: sortedProblems[0], timeRemaining: 0 };
+    }
+
+    let accumulated = 0;
+    for (let i = 0; i < sortedProblems.length; i++) {
+      const problemDuration = sortedProblems[i].individual_time_limit_seconds || 600;
+      if (elapsedSeconds < accumulated + problemDuration) {
+        const timeRemaining = accumulated + problemDuration - elapsedSeconds;
+        return { index: i, problem: sortedProblems[i], timeRemaining };
+      }
+      accumulated += problemDuration;
+    }
+
+    // All problems completed
+    return { index: -1, problem: null, timeRemaining: 0 };
+  }, [elapsedSeconds, sortedProblems, round?.timer_started_at, round?.timer_active, isSequential]);
+
+  // Unified Timer Effect
   useEffect(() => {
     if (!round?.timer_active || !round?.timer_started_at) {
-      setTimeRemaining(durationSeconds);
+      setTimeRemaining(totalDurationSeconds);
+      setElapsedSeconds(0);
       return;
     }
 
-    const calculateRemaining = async () => {
+    const calculateTime = async () => {
       const startTime = new Date(round.timer_started_at!).getTime();
       const now = Date.now();
-      const elapsedSeconds = Math.floor((now - startTime) / 1000);
-      const remaining = Math.max(0, durationSeconds - elapsedSeconds);
-      setTimeRemaining(remaining);
+      const elapsed = Math.floor((now - startTime) / 1000);
 
-      // NOTE: We do NOT auto-stop the timer in the database from the client side.
-      // This prevents a user with a fast system clock from ending the round for everyone.
-      // When remaining <= 0, the UI will simply show "Round Ended" locally.
+      setElapsedSeconds(elapsed);
+      const remaining = Math.max(0, totalDurationSeconds - elapsed);
+      setTimeRemaining(remaining);
     };
 
-    calculateRemaining();
-    const interval = setInterval(calculateRemaining, 1000);
+    calculateTime();
+    const interval = setInterval(calculateTime, 1000);
     return () => clearInterval(interval);
-  }, [round?.timer_active, round?.timer_started_at, durationSeconds, roundNumber]);
+  }, [round?.timer_active, round?.timer_started_at, totalDurationSeconds, roundNumber]);
 
   useEffect(() => {
     if (!teamLoading && !team) {
@@ -82,10 +121,6 @@ export const RoundTemplate = ({
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
-
-  const filteredProblems = allowedProblems
-    ? problems.filter((p) => allowedProblems.includes(p.problem_code))
-    : problems;
 
   if (loading) {
     return (
@@ -184,19 +219,10 @@ export const RoundTemplate = ({
     );
   }
 
-  return (
-    <div className="min-h-screen p-4 md:p-8 relative overflow-x-hidden">
-      {/* Broadcast Banner */}
-      <BroadcastBanner />
-
-      {/* Background */}
-      {backgroundImage && (
-        <div className="fixed inset-0 z-[0] pointer-events-none">
-          <img src={backgroundImage} alt="Background" className="w-full h-full object-cover" />
-        </div>
-      )}
-
-      <div className="relative z-10 max-w-4xl mx-auto">
+  const renderHeader = () => {
+    if (isSequential) {
+      const { problem, index, timeRemaining: problemTime } = currentProblemData;
+      return (
         <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -214,77 +240,213 @@ export const RoundTemplate = ({
 
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-primary font-mono tracking-widest bg-black/50 px-2 py-1 rounded">
-                  ROUND {roundNumber}
-                </span>
-                {round?.scoreboard_url && (
-                  <CodeverseButton
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10"
-                    onClick={() => window.open(round.scoreboard_url!, '_blank')}
-                  >
-                    <Trophy className="w-3 h-3 mr-2" />
-                    SCOREBOARD
-                  </CodeverseButton>
-                )}
-              </div>
+              <span className="text-sm text-primary font-mono tracking-widest bg-black/50 px-2 py-1 rounded">
+                ROUND {roundNumber} - SEQUENTIAL
+              </span>
               <h1 className="font-display text-3xl md:text-4xl font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mt-2">
                 {title}
               </h1>
             </div>
 
-            <div className="text-right p-4 rounded-xl border border-white/10 bg-black/60 backdrop-blur-md shadow-xl">
-              <p className="text-xs text-muted-foreground font-mono flex items-center gap-2 justify-end mb-1">
-                <Clock className="w-3 h-3" />
-                TIME REMAINING
-              </p>
-              <p
-                className={`text-3xl font-mono font-bold tabular-nums ${timeRemaining < 300 ? "text-red-500 animate-pulse" : "text-white"
+            {/* Sequential Timers */}
+            <div className="flex gap-3">
+              {/* Problem Timer */}
+              <div className="text-right p-3 rounded-xl border border-orange-500/30 bg-black/60 backdrop-blur-md">
+                <p className="text-xs text-orange-400 font-mono flex items-center gap-1 justify-end mb-1">
+                  <Clock className="w-3 h-3" />
+                  PROBLEM
+                </p>
+                <p
+                  className={`text-2xl font-mono font-bold tabular-nums ${problemTime < 30 ? "text-red-500 animate-pulse" : "text-orange-400"}`}
+                >
+                  {formatTime(problemTime)}
+                </p>
+              </div>
+
+              {/* Total Timer */}
+              <div className="text-right p-3 rounded-xl border border-white/10 bg-black/60 backdrop-blur-md">
+                <p className="text-xs text-gray-400 font-mono flex items-center gap-1 justify-end mb-1">
+                  <Clock className="w-3 h-3" />
+                  TOTAL
+                </p>
+                <p className="text-2xl font-mono font-bold tabular-nums text-white">
+                  {formatTime(timeRemaining)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Progress Indicator */}
+          <div className="mt-4 flex items-center gap-2">
+            {sortedProblems.map((_, idx) => (
+              <div
+                key={idx}
+                className={`h-2 flex-1 rounded-full transition-all ${idx < index
+                  ? "bg-lime-500"
+                  : idx === index
+                    ? "bg-orange-500"
+                    : "bg-white/20"
                   }`}
-              >
-                {formatTime(timeRemaining)}
-              </p>
-            </div>
+              />
+            ))}
           </div>
+          <p className="text-sm text-gray-400 mt-2 text-center">
+            Problem {(index === -1 ? sortedProblems.length : index + 1)} of {sortedProblems.length}
+          </p>
         </motion.header>
+      );
+    }
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="mb-8 p-4 border border-primary/20 rounded-lg bg-black/60 backdrop-blur-md"
+    // Default Header
+    return (
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
+      >
+        <CodeverseButton
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate("/welcome")}
+          className="mb-4 text-primary hover:text-primary/80 hover:bg-primary/10"
         >
-          <div className="flex items-start gap-3">
-            {warningMessage ? (
-              <AlertTriangle className="w-5 h-5 text-yellow-500" />
-            ) : (
-              <Lightbulb className="w-5 h-5 text-primary" />
-            )}
-            <div className="text-sm font-mono text-gray-300">
-              <p className="text-primary font-semibold mb-1">SYSTEM MESSAGE</p>
-              <p>
-                {warningMessage ||
-                  "Sequence integrity critical. Access challenges below. Hints are available if synchronization fails."}
-              </p>
-            </div>
-          </div>
-        </motion.div>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Mission Hub
+        </CodeverseButton>
 
-        <div className="space-y-4">
-          {filteredProblems.map((problem, index) => (
-            <ProblemCard
-              key={problem.id}
-              problem={problem}
-              contestId={contestId}
-              vjudgeUrl={vjudgeUrl}
-              index={index}
-              showHints={showHints}
-              roundStartTime={round?.timer_started_at}
-            />
-          ))}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-primary font-mono tracking-widest bg-black/50 px-2 py-1 rounded">
+                ROUND {roundNumber}
+              </span>
+              {round?.scoreboard_url && (
+                <CodeverseButton
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10"
+                  onClick={() => window.open(round.scoreboard_url!, '_blank')}
+                >
+                  <Trophy className="w-3 h-3 mr-2" />
+                  SCOREBOARD
+                </CodeverseButton>
+              )}
+            </div>
+            <h1 className="font-display text-3xl md:text-4xl font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mt-2">
+              {title}
+            </h1>
+          </div>
+
+          <div className="text-right p-4 rounded-xl border border-white/10 bg-black/60 backdrop-blur-md shadow-xl">
+            <p className="text-xs text-muted-foreground font-mono flex items-center gap-2 justify-end mb-1">
+              <Clock className="w-3 h-3" />
+              TIME REMAINING
+            </p>
+            <p
+              className={`text-3xl font-mono font-bold tabular-nums ${timeRemaining < 300 ? "text-red-500 animate-pulse" : "text-white"
+                }`}
+            >
+              {formatTime(timeRemaining)}
+            </p>
+          </div>
         </div>
+      </motion.header>
+    );
+  };
+
+  return (
+    <div className="min-h-screen p-4 md:p-8 relative overflow-x-hidden">
+      {/* Broadcast Banner */}
+      <BroadcastBanner />
+
+      {/* Background */}
+      {backgroundImage && (
+        <div className="fixed inset-0 z-[0] pointer-events-none">
+          <img src={backgroundImage} alt="Background" className="w-full h-full object-cover" />
+        </div>
+      )}
+
+      <div className="relative z-10 max-w-4xl mx-auto">
+        {renderHeader()}
+
+        {isSequential ? (
+          <>
+            {/* Warning Banner for Sequential */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="mb-8 p-4 border border-orange-500/30 rounded-lg bg-black/60 backdrop-blur-md"
+            >
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-orange-500" />
+                <div className="text-sm font-mono text-gray-300">
+                  <p className="text-orange-400 font-semibold mb-1">GLOBAL SYNCHRONIZED TIMER</p>
+                  <p>
+                    Problems advance automatically based on elapsed time. Current problem is shown to all
+                    participants simultaneously. Focus is critical.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Current Problem for Sequential */}
+            <AnimatePresence mode="wait">
+              {currentProblemData.problem && (
+                <ProblemCard
+                  key={currentProblemData.problem.id}
+                  problem={currentProblemData.problem}
+                  contestId={contestId}
+                  vjudgeUrl={vjudgeUrl}
+                  index={currentProblemData.index}
+                  showHints={showHints}
+                  roundStartTime={round?.timer_started_at}
+                  forceExpanded={true}
+                />
+              )}
+            </AnimatePresence>
+          </>
+        ) : (
+          <>
+            {/* Standard Warning Banner */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="mb-8 p-4 border border-primary/20 rounded-lg bg-black/60 backdrop-blur-md"
+            >
+              <div className="flex items-start gap-3">
+                {warningMessage ? (
+                  <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                ) : (
+                  <Lightbulb className="w-5 h-5 text-primary" />
+                )}
+                <div className="text-sm font-mono text-gray-300">
+                  <p className="text-primary font-semibold mb-1">SYSTEM MESSAGE</p>
+                  <p>
+                    {warningMessage ||
+                      "Sequence integrity critical. Access challenges below. Hints are available if synchronization fails."}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Standard List View */}
+            <div className="space-y-4">
+              {sortedProblems.map((problem, index) => (
+                <ProblemCard
+                  key={problem.id}
+                  problem={problem}
+                  contestId={contestId}
+                  vjudgeUrl={vjudgeUrl}
+                  index={index}
+                  showHints={showHints}
+                  roundStartTime={round?.timer_started_at}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
