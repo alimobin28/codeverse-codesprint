@@ -9,9 +9,9 @@ import {
   CodeverseCardHeader,
   CodeverseCardTitle,
 } from "@/components/ui/codeverse-card";
-import { supabase } from "@/integrations/supabase/client";
-import { Shield, RefreshCw, Settings, FileText, Lightbulb, Radio } from "lucide-react";
+import { Shield, Settings, FileText, Lightbulb, Radio } from "lucide-react";
 import { toast } from "sonner";
+import { authService } from "@/services/authService";
 
 // Admin Components
 import { RoundControl } from "@/components/Admin/RoundControl";
@@ -24,35 +24,60 @@ type AdminTab = "rounds" | "problems" | "hints" | "broadcast";
 const Admin = () => {
   const [password, setPassword] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [adminPassword, setAdminPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>("rounds");
   const [selectedRound, setSelectedRound] = useState<number | undefined>(undefined);
   const navigate = useNavigate();
 
+  // Check for existing session on mount
   useEffect(() => {
-    const fetchAdminPassword = async () => {
-      const { data } = await supabase
-        .from("admin_settings")
-        .select("setting_value")
-        .eq("setting_key", "admin_password")
-        .single();
-
-      if (data) {
-        setAdminPassword(data.setting_value || "");
+    const checkAuth = async () => {
+      if (authService.isAuthenticated()) {
+        const isValid = await authService.verify();
+        if (isValid) {
+          setIsAuthenticated(true);
+        }
       }
     };
-
-    fetchAdminPassword();
+    checkAuth();
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === adminPassword) {
-      setIsAuthenticated(true);
-      toast.success("Admin access granted");
-    } else {
-      toast.error("Invalid password");
+
+    if (!password) {
+      toast.error("Please enter a password");
+      return;
     }
+
+    setIsLoading(true);
+
+    try {
+      const result = await authService.login(password);
+
+      if (result.success) {
+        setIsAuthenticated(true);
+        toast.success("Admin access granted");
+        setPassword(""); // Clear password input
+      } else if (result.locked) {
+        toast.error(result.error || "Account is locked");
+      } else if (result.attemptsRemaining !== undefined) {
+        toast.error(`${result.error}. ${result.attemptsRemaining} attempts remaining`);
+      } else {
+        toast.error(result.error || "Authentication failed");
+      }
+    } catch (error) {
+      toast.error("Connection error. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await authService.logout();
+    setIsAuthenticated(false);
+    setPassword("");
+    toast.info("Logged out successfully");
   };
 
   // Neon Green Glow Helpers
@@ -96,10 +121,12 @@ const Admin = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter admin password"
                 autoFocus
+                disabled={isLoading}
                 className="border-lime-500/30 focus:border-lime-400 focus:ring-lime-500/20"
               />
               <CodeverseButton
                 type="submit"
+                disabled={isLoading}
                 className="
                   w-full 
                   !bg-[#7BC62D] 
@@ -108,9 +135,10 @@ const Admin = () => {
                   hover:!bg-[#8cd63d] 
                   shadow-[0_0_20px_rgba(123,198,45,0.5)] 
                   transition-all duration-300
+                  disabled:opacity-50 disabled:cursor-not-allowed
                 "
               >
-                AUTHENTICATE
+                {isLoading ? "AUTHENTICATING..." : "AUTHENTICATE"}
               </CodeverseButton>
             </form>
 
@@ -151,7 +179,7 @@ const Admin = () => {
             <CodeverseButton
               variant="ghost"
               size="sm"
-              onClick={() => setIsAuthenticated(false)}
+              onClick={handleLogout}
               className="text-lime-400 hover:bg-lime-500/10"
             >
               Logout

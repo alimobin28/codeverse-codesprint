@@ -203,9 +203,147 @@ CREATE POLICY "Public manage broadcasts" ON public.broadcasts FOR ALL USING (tru
 -- Enable Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE public.broadcasts;
 
+-- Migration: Move all guidance from problems to hints table
+-- Run this in Supabase SQL Editor
+
+-- Insert guidance from problems into hints table (only where guidance exists)
+INSERT INTO public.hints (problem_id, content, unlock_after_minutes, sort_order)
+SELECT 
+    id,
+    guidance,
+    0,  -- All hints unlock immediately (0 minutes)
+    0   -- Sort order 0
+FROM public.problems 
+WHERE guidance IS NOT NULL AND guidance != '';
+
+-- Update all existing hints to have 0 unlock time
+UPDATE public.hints SET unlock_after_minutes = 0;
+
+-- Clear the guidance field from problems (optional, can keep for backup)
+-- UPDATE public.problems SET guidance = NULL;
+
+-- Confirm migration
+SELECT 
+    h.id as hint_id,
+    p.problem_code,
+    p.title,
+    h.content,
+    h.unlock_after_minutes
+FROM public.hints h
+JOIN public.problems p ON h.problem_id = p.id
+ORDER BY p.round_number, p.sort_order;
+
 ALTER TABLE rounds 
 ADD COLUMN vjudge_url TEXT DEFAULT NULL,
 ADD COLUMN scoreboard_url TEXT DEFAULT NULL;
+
+-- ====================================================================
+-- Security Update: Admin Authentication Migration
+-- Run this AFTER existing schema.sql
+-- ====================================================================
+
+-- ============================
+-- UPDATE: admin_settings table
+-- ============================
+
+-- Add new security columns
+ALTER TABLE public.admin_settings 
+ADD COLUMN IF NOT EXISTS password_hash TEXT,
+ADD COLUMN IF NOT EXISTS failed_attempts INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ;
+
+-- Update the admin_password row to admin_account for new structure
+INSERT INTO public.admin_settings (setting_key, setting_value, password_hash, failed_attempts)
+VALUES ('admin_account', NULL, NULL, 0)
+ON CONFLICT (setting_key) DO NOTHING;
+
+-- ============================
+-- CREATE: admin_sessions table
+-- ============================
+
+CREATE TABLE IF NOT EXISTS public.admin_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    session_token TEXT NOT NULL UNIQUE DEFAULT uuid_generate_v4()::text,
+    ip_address TEXT,
+    user_agent TEXT,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Create index for faster session lookups
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON public.admin_sessions(session_token);
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires ON public.admin_sessions(expires_at);
+
+-- ============================
+-- RLS: admin_sessions
+-- ============================
+
+ALTER TABLE public.admin_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Only allow service role to manage sessions (Edge Functions)
+-- No client-side access
+CREATE POLICY "Service role only" ON public.admin_sessions
+FOR ALL USING (false);
+
+-- ============================
+-- UPDATE: admin_settings RLS
+-- ============================
+
+-- Drop existing overly permissive policies
+DROP POLICY IF EXISTS "Public read admin_settings" ON public.admin_settings;
+DROP POLICY IF EXISTS "Public update admin_settings" ON public.admin_settings;
+
+-- Only allow reading competition name (not password hash)
+CREATE POLICY "Public read competition name" ON public.admin_settings
+FOR SELECT USING (setting_key = 'competition_name');
+
+-- All other operations only via service role (Edge Functions)
+CREATE POLICY "Service role full access" ON public.admin_settings
+FOR ALL USING (false);
+
+-- ============================
+-- CLEANUP: Remove old password
+-- ============================
+
+-- Remove plaintext password from old admin_password row
+UPDATE public.admin_settings
+SET setting_value = NULL
+WHERE setting_key = 'admin_password';
+
+-- ============================
+-- AUTOMATIC SESSION CLEANUP
+-- ============================
+
+-- Function to delete expired sessions
+CREATE OR REPLACE FUNCTION cleanup_expired_sessions()
+RETURNS void AS $$
+BEGIN
+    DELETE FROM public.admin_sessions
+    WHERE expires_at < NOW();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- You can set up a cron job to run this periodically:
+-- SELECT cron.schedule('cleanup-sessions', '0 * * * *', 'SELECT cleanup_expired_sessions();');
+
+COMMENT ON TABLE public.admin_sessions IS 'Stores active admin sessions with JWT tokens';
+COMMENT ON COLUMN public.admin_settings.password_hash IS 'Bcrypt hashed admin password';
+COMMENT ON COLUMN public.admin_settings.failed_attempts IS 'Number of consecutive failed login attempts';
+COMMENT ON COLUMN public.admin_settings.locked_until IS 'Account locked until this timestamp (15 min after 5 failed attempts)';
+
+-- Update admin password
+UPDATE admin_settings
+SET password_hash = '$2a$10$tQ.Xu9nMx/P/qGkCx7XRgO8S/rsd5aE0j6tL1vxvuZjAa150WLRTC',
+    failed_attempts = 0,
+    locked_until = NULL,
+    setting_value = NULL
+WHERE setting_key = 'admin_account';
+
+-- If admin_account doesn't exist, create it:
+INSERT INTO admin_settings (setting_key, password_hash, failed_attempts)
+VALUES ('admin_account', '$2a$10$tQ.Xu9nMx/P/qGkCx7XRgO8S/rsd5aE0j6tL1vxvuZjAa150WLRTC', 0)
+ON CONFLICT (setting_key) 
+DO UPDATE SET password_hash = EXCLUDED.password_hash;
 
 -- ============================
 -- END OF SCHEMA
