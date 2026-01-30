@@ -8,6 +8,8 @@ import { useProblems } from "@/hooks/useProblems";
 import { ArrowLeft, Clock, Lightbulb, AlertTriangle, Lock, XCircle, Trophy } from "lucide-react";
 import { ProblemCard } from "./ProblemCard";
 import { BroadcastBanner } from "@/components/BroadcastBanner";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { useServerTime } from "@/hooks/useServerTime";
 
 interface RoundTemplateProps {
   roundNumber: number;
@@ -29,12 +31,19 @@ export const RoundTemplate = ({
   showHints = true,
 }: RoundTemplateProps) => {
   const navigate = useNavigate();
-  const { team, loading: teamLoading } = useTeamSession();
+  const { team, loading: teamLoading, updateActivity } = useTeamSession();
   const { getRound, loading: roundsLoading } = useRounds();
   const { problems, loading: problemsLoading } = useProblems(roundNumber);
+  const { getServerTime, isSynced: isTimeSynced } = useServerTime();
+
+  // Track team activity to keep session alive
+  useActivityTracker({
+    onActivity: updateActivity,
+    enabled: !!team,
+  });
 
   const round = getRound(roundNumber);
-  const loading = teamLoading || roundsLoading || problemsLoading;
+  const loading = teamLoading || roundsLoading || problemsLoading || !isTimeSynced;
 
   // --- Logic for Sequential/Synchronized Mode (Round 2) ---
   const isSequential = roundNumber === 2;
@@ -87,7 +96,7 @@ export const RoundTemplate = ({
     return { index: -1, problem: null, timeRemaining: 0 };
   }, [elapsedSeconds, sortedProblems, round?.timer_started_at, round?.timer_active, isSequential]);
 
-  // Unified Timer Effect
+  // Unified Timer Effect - Uses server-synced time
   useEffect(() => {
     if (!round?.timer_active || !round?.timer_started_at) {
       setTimeRemaining(totalDurationSeconds);
@@ -95,9 +104,9 @@ export const RoundTemplate = ({
       return;
     }
 
-    const calculateTime = async () => {
+    const calculateTime = () => {
       const startTime = new Date(round.timer_started_at!).getTime();
-      const now = Date.now();
+      const now = getServerTime(); // Use server-synced time instead of Date.now()
       const elapsed = Math.floor((now - startTime) / 1000);
 
       setElapsedSeconds(elapsed);
@@ -108,7 +117,7 @@ export const RoundTemplate = ({
     calculateTime();
     const interval = setInterval(calculateTime, 1000);
     return () => clearInterval(interval);
-  }, [round?.timer_active, round?.timer_started_at, totalDurationSeconds, roundNumber]);
+  }, [round?.timer_active, round?.timer_started_at, totalDurationSeconds, roundNumber, getServerTime]);
 
   useEffect(() => {
     if (!teamLoading && !team) {

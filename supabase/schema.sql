@@ -331,6 +331,13 @@ COMMENT ON COLUMN public.admin_settings.password_hash IS 'Bcrypt hashed admin pa
 COMMENT ON COLUMN public.admin_settings.failed_attempts IS 'Number of consecutive failed login attempts';
 COMMENT ON COLUMN public.admin_settings.locked_until IS 'Account locked until this timestamp (15 min after 5 failed attempts)';
 
+-- Allow the client to read the admin account row (needed for client-side auth)
+CREATE POLICY "Public read admin account" ON public.admin_settings
+FOR SELECT USING (setting_key = 'admin_account');
+-- Allow the client to update failed attempts (needed for lockout logic)
+CREATE POLICY "Public update admin stats" ON public.admin_settings
+FOR UPDATE USING (setting_key = 'admin_account');
+
 -- Update admin password
 UPDATE admin_settings
 SET password_hash = '$2a$10$tQ.Xu9nMx/P/qGkCx7XRgO8S/rsd5aE0j6tL1vxvuZjAa150WLRTC',
@@ -344,6 +351,27 @@ INSERT INTO admin_settings (setting_key, password_hash, failed_attempts)
 VALUES ('admin_account', '$2a$10$tQ.Xu9nMx/P/qGkCx7XRgO8S/rsd5aE0j6tL1vxvuZjAa150WLRTC', 0)
 ON CONFLICT (setting_key) 
 DO UPDATE SET password_hash = EXCLUDED.password_hash;
+
+-- ====================================================================
+-- Server Time Function for Clock Synchronization
+-- Run this in Supabase SQL Editor
+-- ====================================================================
+
+-- Function to get current server timestamp
+-- Used by clients to calculate clock offset
+CREATE OR REPLACE FUNCTION get_server_time()
+RETURNS TIMESTAMPTZ
+LANGUAGE SQL
+STABLE
+AS $$
+  SELECT NOW();
+$$;
+
+-- Grant execute permission to all users (already authenticated via RLS)
+GRANT EXECUTE ON FUNCTION get_server_time() TO anon, authenticated;
+
+COMMENT ON FUNCTION get_server_time() IS 'Returns server timestamp for client clock synchronization';
+
 
 -- ============================
 -- END OF SCHEMA

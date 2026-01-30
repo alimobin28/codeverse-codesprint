@@ -5,6 +5,8 @@ import type { Tables } from "@/integrations/supabase/types";
 type Team = Tables<"teams">;
 
 const SESSION_KEY = "codeverse_session_id";
+const LAST_ACTIVITY_KEY = "codeverse_last_activity";
+const INACTIVITY_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes
 
 export const useTeamSession = () => {
   const [team, setTeam] = useState<Team | null>(null);
@@ -13,6 +15,17 @@ export const useTeamSession = () => {
 
   const loadTeamBySessionId = useCallback(async (sessionId: string) => {
     try {
+      // Check if session has expired due to inactivity
+      const lastActivity = sessionStorage.getItem(LAST_ACTIVITY_KEY);
+      if (lastActivity) {
+        const inactiveTime = Date.now() - parseInt(lastActivity);
+        if (inactiveTime >= INACTIVITY_TIMEOUT_MS) {
+          console.warn("Session expired due to inactivity, clearing.");
+          sessionStorage.removeItem(SESSION_KEY);
+          sessionStorage.removeItem(LAST_ACTIVITY_KEY);
+          return null;
+        }
+      }
       const { data, error } = await supabase
         .from("teams")
         .select("*")
@@ -24,7 +37,8 @@ export const useTeamSession = () => {
         // PGRST116 is "The result contains 0 rows" (single() returned nothing)
         if (error.code === "PGRST116" || error.code === "406") {
           console.warn("Session invalid, clearing.");
-          localStorage.removeItem(SESSION_KEY);
+          sessionStorage.removeItem(SESSION_KEY);
+          sessionStorage.removeItem(LAST_ACTIVITY_KEY);
           return null;
         }
         // For other errors (network, etc), throw to keep the loading state or handle gracefully
@@ -36,7 +50,7 @@ export const useTeamSession = () => {
     } catch (err: any) {
       console.error("Error loading team:", err);
       // Only clear if we explicitly decided to above, otherwise keep session
-      if (!localStorage.getItem(SESSION_KEY)) {
+      if (!sessionStorage.getItem(SESSION_KEY)) {
         return null;
       }
       // If network error, we might want to return null but NOT clear storage
@@ -48,7 +62,7 @@ export const useTeamSession = () => {
   const initializeSession = useCallback(async () => {
     setLoading(true);
     try {
-      const storedSessionId = localStorage.getItem(SESSION_KEY);
+      const storedSessionId = sessionStorage.getItem(SESSION_KEY);
       if (storedSessionId) {
         const existingTeam = await loadTeamBySessionId(storedSessionId);
         if (existingTeam) {
@@ -76,7 +90,8 @@ export const useTeamSession = () => {
 
       if (existingTeam) {
         // Team exists, join existing session
-        localStorage.setItem(SESSION_KEY, existingTeam.session_id);
+        sessionStorage.setItem(SESSION_KEY, existingTeam.session_id);
+        sessionStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
         setTeam(existingTeam);
         return existingTeam;
       }
@@ -98,7 +113,8 @@ export const useTeamSession = () => {
             .eq("name", teamName)
             .single();
           if (raceTeam) {
-            localStorage.setItem(SESSION_KEY, raceTeam.session_id);
+            sessionStorage.setItem(SESSION_KEY, raceTeam.session_id);
+            sessionStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
             setTeam(raceTeam);
             return raceTeam;
           }
@@ -106,7 +122,8 @@ export const useTeamSession = () => {
         throw createError;
       }
 
-      localStorage.setItem(SESSION_KEY, newTeam.session_id);
+      sessionStorage.setItem(SESSION_KEY, newTeam.session_id);
+      sessionStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
       setTeam(newTeam);
       return newTeam;
     } catch (err: any) {
@@ -118,9 +135,16 @@ export const useTeamSession = () => {
   };
 
   const clearSession = () => {
-    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(LAST_ACTIVITY_KEY);
     setTeam(null);
   };
+
+  const updateActivity = useCallback(() => {
+    if (team) {
+      sessionStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+    }
+  }, [team]);
 
   useEffect(() => {
     initializeSession();
@@ -132,6 +156,7 @@ export const useTeamSession = () => {
     error,
     createTeam,
     clearSession,
+    updateActivity,
     isAuthenticated: !!team,
   };
 };

@@ -12,6 +12,7 @@ import {
 import { Shield, Settings, FileText, Lightbulb, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { authService } from "@/services/authService";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 // Admin Components
 import { RoundControl } from "@/components/Admin/RoundControl";
@@ -28,6 +29,12 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>("rounds");
   const [selectedRound, setSelectedRound] = useState<number | undefined>(undefined);
   const navigate = useNavigate();
+
+  // Track admin activity to keep session alive
+  useActivityTracker({
+    onActivity: () => authService.updateActivity(),
+    enabled: isAuthenticated,
+  });
 
   // Check for existing session on mount
   useEffect(() => {

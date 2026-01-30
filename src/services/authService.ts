@@ -15,14 +15,21 @@ export interface AuthResponse {
 
 class AuthService {
     private isAuth: boolean = false;
-    private sessionExpiry: number | null = null;
+    private lastActivity: number | null = null;
+    private readonly INACTIVITY_TIMEOUT = 20 * 60 * 1000; // 20 minutes
 
     constructor() {
         // Check if session still valid
-        const expiry = sessionStorage.getItem('admin_session_expiry');
-        if (expiry && parseInt(expiry) > Date.now()) {
-            this.isAuth = true;
-            this.sessionExpiry = parseInt(expiry);
+        const lastActivity = sessionStorage.getItem('admin_last_activity');
+        if (lastActivity) {
+            const inactiveTime = Date.now() - parseInt(lastActivity);
+            if (inactiveTime < this.INACTIVITY_TIMEOUT) {
+                this.isAuth = true;
+                this.lastActivity = parseInt(lastActivity);
+            } else {
+                // Session expired due to inactivity
+                this.logout();
+            }
         }
     }
 
@@ -100,10 +107,10 @@ class AuthService {
                 .update({ failed_attempts: 0, locked_until: null })
                 .eq('setting_key', 'admin_account');
 
-            // Set session (1 hour)
+            // Set session with activity tracking
             this.isAuth = true;
-            this.sessionExpiry = Date.now() + 60 * 60 * 1000;
-            sessionStorage.setItem('admin_session_expiry', this.sessionExpiry.toString());
+            this.lastActivity = Date.now();
+            sessionStorage.setItem('admin_last_activity', this.lastActivity.toString());
 
             return { success: true };
         } catch (error) {
@@ -113,14 +120,31 @@ class AuthService {
     }
 
     /**
-     * Verify current session
+     * Verify current session (check for inactivity)
      */
     async verify(): Promise<boolean> {
-        if (!this.sessionExpiry || Date.now() >= this.sessionExpiry) {
+        if (!this.lastActivity) {
             this.logout();
             return false;
         }
+
+        const inactiveTime = Date.now() - this.lastActivity;
+        if (inactiveTime >= this.INACTIVITY_TIMEOUT) {
+            this.logout();
+            return false;
+        }
+
         return this.isAuth;
+    }
+
+    /**
+     * Update last activity timestamp (call on user interaction)
+     */
+    updateActivity(): void {
+        if (this.isAuth) {
+            this.lastActivity = Date.now();
+            sessionStorage.setItem('admin_last_activity', this.lastActivity.toString());
+        }
     }
 
     /**
@@ -128,15 +152,20 @@ class AuthService {
      */
     async logout(): Promise<void> {
         this.isAuth = false;
-        this.sessionExpiry = null;
-        sessionStorage.removeItem('admin_session_expiry');
+        this.lastActivity = null;
+        sessionStorage.removeItem('admin_last_activity');
     }
 
     /**
      * Check if currently authenticated
      */
     isAuthenticated(): boolean {
-        return this.isAuth && this.sessionExpiry !== null && Date.now() < this.sessionExpiry;
+        if (!this.isAuth || !this.lastActivity) {
+            return false;
+        }
+
+        const inactiveTime = Date.now() - this.lastActivity;
+        return inactiveTime < this.INACTIVITY_TIMEOUT;
     }
 }
 

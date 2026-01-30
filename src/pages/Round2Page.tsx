@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { ProblemCard } from "./ProblemCard";
 import { BroadcastBanner } from "@/components/BroadcastBanner";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { useServerTime } from "@/hooks/useServerTime";
 
 interface Round2PageProps {
     contestId?: string; // Now optional - use vjudge_url from database
@@ -26,12 +28,19 @@ interface Round2PageProps {
 
 const Round2Page = ({ contestId, backgroundImage }: Round2PageProps) => {
     const navigate = useNavigate();
-    const { team, loading: teamLoading } = useTeamSession();
+    const { team, loading: teamLoading, updateActivity } = useTeamSession();
     const { getRound, loading: roundsLoading } = useRounds();
     const { problems, loading: problemsLoading } = useProblems(2);
+    const { getServerTime, isSynced: isTimeSynced } = useServerTime();
+
+    // Track team activity to keep session alive
+    useActivityTracker({
+        onActivity: updateActivity,
+        enabled: !!team,
+    });
 
     const round = getRound(2);
-    const loading = teamLoading || roundsLoading || problemsLoading;
+    const loading = teamLoading || roundsLoading || problemsLoading || !isTimeSynced;
 
     // Sort problems by sort_order
     const sortedProblems = useMemo(() => {
@@ -69,16 +78,16 @@ const Round2Page = ({ contestId, backgroundImage }: Round2PageProps) => {
         return { index: -1, problem: null, timeRemaining: 0 };
     }, [elapsedSeconds, sortedProblems, round?.timer_started_at, round?.timer_active]);
 
-    // Global timer effect
+    // Global timer effect - Uses server-synced time
     useEffect(() => {
         if (!round?.timer_active || !round?.timer_started_at) {
             setElapsedSeconds(0);
             return;
         }
 
-        const calculateElapsed = async () => {
+        const calculateElapsed = () => {
             const startTime = new Date(round.timer_started_at!).getTime();
-            const now = Date.now();
+            const now = getServerTime(); // Use server-synced time instead of Date.now()
             const elapsed = Math.floor((now - startTime) / 1000);
             setElapsedSeconds(elapsed);
 
@@ -90,7 +99,7 @@ const Round2Page = ({ contestId, backgroundImage }: Round2PageProps) => {
         calculateElapsed();
         const interval = setInterval(calculateElapsed, 1000);
         return () => clearInterval(interval);
-    }, [round?.timer_active, round?.timer_started_at, totalDurationSeconds]);
+    }, [round?.timer_active, round?.timer_started_at, totalDurationSeconds, getServerTime]);
 
     // Redirect if not logged in
     useEffect(() => {
