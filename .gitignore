@@ -29,3 +29,6 @@ dist-ssr
 .env.*.local
 supabase/.env
 admin-setup-token.txt
+
+# Documentation (internal only)
+docs/
