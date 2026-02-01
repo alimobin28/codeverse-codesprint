@@ -326,6 +326,12 @@ export type Database = {
                 Args: Record<string, never>
                 Returns: string
             }
+            start_round_timer: {
+                Args: {
+                    p_round_number: number
+                }
+                Returns: undefined
+            }
         }
         Enums: {
             [_ in never]: never

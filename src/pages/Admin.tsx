@@ -12,7 +12,6 @@ import {
 import { Shield, Settings, FileText, Lightbulb, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { authService } from "@/services/authService";
-import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 // Admin Components
 import { RoundControl } from "@/components/Admin/RoundControl";
@@ -23,27 +22,26 @@ import { BroadcastPanel } from "@/components/Admin/BroadcastPanel";
 type AdminTab = "rounds" | "problems" | "hints" | "broadcast";
 
 const Admin = () => {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [activeTab, setActiveTab] = useState<AdminTab>("rounds");
   const [selectedRound, setSelectedRound] = useState<number | undefined>(undefined);
   const navigate = useNavigate();
 
-  // Track admin activity to keep session alive
-  useActivityTracker({
-    onActivity: () => authService.updateActivity(),
-    enabled: isAuthenticated,
-  });
-
   // Check for existing session on mount
   useEffect(() => {
     const checkAuth = async () => {
-      if (authService.isAuthenticated()) {
+      setIsCheckingAuth(true);
+      try {
         const isValid = await authService.verify();
         if (isValid) {
           setIsAuthenticated(true);
         }
+      } finally {
+        setIsCheckingAuth(false);
       }
     };
     checkAuth();
@@ -52,24 +50,21 @@ const Admin = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!password) {
-      toast.error("Please enter a password");
+    if (!email || !password) {
+      toast.error("Please enter email and password");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const result = await authService.login(password);
+      const result = await authService.login(email, password);
 
       if (result.success) {
         setIsAuthenticated(true);
         toast.success("Admin access granted");
-        setPassword(""); // Clear password input
-      } else if (result.locked) {
-        toast.error(result.error || "Account is locked");
-      } else if (result.attemptsRemaining !== undefined) {
-        toast.error(`${result.error}. ${result.attemptsRemaining} attempts remaining`);
+        setEmail("");
+        setPassword("");
       } else {
         toast.error(result.error || "Authentication failed");
       }
@@ -83,6 +78,7 @@ const Admin = () => {
   const handleLogout = async () => {
     await authService.logout();
     setIsAuthenticated(false);
+    setEmail("");
     setPassword("");
     toast.info("Logged out successfully");
   };
@@ -97,6 +93,16 @@ const Admin = () => {
     { id: "hints", label: "Hints", icon: <Lightbulb className="w-4 h-4" /> },
     { id: "broadcast", label: "Broadcast", icon: <Radio className="w-4 h-4" /> },
   ];
+
+  // Show loading state while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <CosmicBackground />
+        <div className="text-lime-400 animate-pulse">Checking authentication...</div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -123,11 +129,19 @@ const Admin = () => {
 
             <form onSubmit={handleLogin} className="space-y-4">
               <CodeverseInput
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Admin email"
+                autoFocus
+                disabled={isLoading}
+                className="border-lime-500/30 focus:border-lime-400 focus:ring-lime-500/20"
+              />
+              <CodeverseInput
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter admin password"
-                autoFocus
+                placeholder="Password"
                 disabled={isLoading}
                 className="border-lime-500/30 focus:border-lime-400 focus:ring-lime-500/20"
               />

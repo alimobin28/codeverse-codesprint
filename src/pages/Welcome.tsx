@@ -6,7 +6,7 @@ import { CodeverseButton } from "@/components/ui/codeverse-button";
 import { CodeverseCard } from "@/components/ui/codeverse-card";
 import { useTeamSession } from "@/hooks/useTeamSession";
 import { useRounds } from "@/hooks/useRounds";
-import { Cpu, Zap, Skull, LogOut, Shield } from "lucide-react";
+import { Cpu, Zap, Skull, LogOut } from "lucide-react";
 import { BroadcastBanner } from "@/components/BroadcastBanner";
 
 /* ===== STORY CONTENT ===== */
@@ -150,9 +150,6 @@ const Welcome = () => {
           </div>
 
           <div className="flex gap-3">
-            <CodeverseButton variant="ghost" size="sm" onClick={() => navigate("/admin")}>
-              <Shield className="mr-2 h-4 w-4 text-lime-200" /> Admin
-            </CodeverseButton>
             <CodeverseButton variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" /> Exit
             </CodeverseButton>

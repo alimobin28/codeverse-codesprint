@@ -12,12 +12,15 @@ import { CodeverseInput } from "@/components/ui/codeverse-input";
 import { Lock, Unlock, Play, Pause, Clock, Settings, ExternalLink, Trophy, Save, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useServerTime } from "@/hooks/useServerTime";
 
 const neonText = "text-lime-400 drop-shadow-[0_0_5px_rgba(163,230,53,0.8)]";
 
 export const RoundControl = () => {
     const { rounds, unlockRound, toggleRound3Timer, refetch } = useRounds();
     const { problems: round2Problems } = useProblems(2); // For sequential round timer
+    const { getServerTime, isSynced } = useServerTime();
+
     const [editingDuration, setEditingDuration] = useState<number | null>(null);
     const [durationValue, setDurationValue] = useState("");
 
@@ -26,13 +29,15 @@ export const RoundControl = () => {
     const [vjudgeValue, setVjudgeValue] = useState("");
     const [scoreboardValue, setScoreboardValue] = useState("");
 
-    // Timer Logic
-    const [now, setNow] = useState(Date.now());
+    // Timer Logic - Use server-synced time
+    const [now, setNow] = useState(() => isSynced ? getServerTime() : Date.now());
 
     useEffect(() => {
-        const interval = setInterval(() => setNow(Date.now()), 1000);
+        const interval = setInterval(() => {
+            setNow(isSynced ? getServerTime() : Date.now());
+        }, 1000);
         return () => clearInterval(interval);
-    }, []);
+    }, [getServerTime, isSynced]);
 
     // Calculate Round 2 total duration from individual problem limits
     const round2TotalSeconds = useMemo(() => {
@@ -68,23 +73,34 @@ export const RoundControl = () => {
 
     const handleTimerToggle = async (roundNumber: number, currentActive: boolean) => {
         try {
-            const updateData = {
-                timer_active: !currentActive,
-                timer_started_at: !currentActive ? new Date().toISOString() : null,
-            };
+            if (!currentActive) {
+                // Starting timer - use database server time for accurate sync
+                const { error } = await supabase.rpc('start_round_timer', {
+                    p_round_number: roundNumber
+                });
 
-            const { error } = await supabase
-                .from("rounds")
-                .update(updateData)
-                .eq("round_number", roundNumber);
+                if (error) throw error;
+                toast.success(`Timer started for Round ${roundNumber}`);
+            } else {
+                // Stopping timer
+                const { error } = await supabase
+                    .from("rounds")
+                    .update({
+                        timer_active: false,
+                        timer_started_at: null
+                    })
+                    .eq("round_number", roundNumber);
 
-            if (error) throw error;
-            toast.success(`Timer ${!currentActive ? "started" : "stopped"} for Round ${roundNumber}`);
+                if (error) throw error;
+                toast.success(`Timer stopped for Round ${roundNumber}`);
+            }
+
             refetch();
         } catch (err) {
             toast.error("Failed to toggle timer");
         }
     };
+
 
     const handleDurationSave = async (roundNumber: number) => {
         try {

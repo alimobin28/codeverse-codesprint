@@ -4,7 +4,7 @@ import { CosmicBackground } from "@/components/CosmicBackground";
 import { CodeverseButton } from "@/components/ui/codeverse-button";
 import { CodeverseInput } from "@/components/ui/codeverse-input";
 import { useTeamSession } from "@/hooks/useTeamSession";
-import { Terminal, Shield, ChevronRight, AlertCircle, Cpu } from "lucide-react";
+import { Terminal, ChevronRight, AlertCircle, Cpu } from "lucide-react";
 import { BroadcastBanner } from "@/components/BroadcastBanner";
 
 const Index = () => {
@@ -38,22 +38,6 @@ const Index = () => {
       <div className="absolute inset-0 z-0 bg-black/40 pointer-events-none mix-blend-multiply" />
       <div className="absolute inset-0 z-0 opacity-[0.05] pointer-events-none bg-[linear-gradient(transparent_50%,rgba(163,230,53,0.1)_50%)] bg-[length:100%_4px]" />
 
-      {/* Admin Gateway */}
-      <div className="absolute top-6 sm:top-8 right-4 sm:right-8 z-50">
-        <CodeverseButton
-          variant="ghost"
-          onClick={() => navigate("/admin")}
-          className="group relative overflow-hidden bg-black/40 border-lime-500/30 text-lime-100 hover:text-white hover:border-lime-400 transition-all duration-300 px-4 sm:px-5 py-2 backdrop-blur-md shadow-[0_0_15px_rgba(163,230,53,0.15)]"
-        >
-          <div className="absolute inset-0 bg-lime-500/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-          <div className="flex items-center gap-2 relative z-10">
-            <Shield className="w-4 h-4 text-lime-400 group-hover:text-lime-200 transition-colors" />
-            <span className="text-[10px] sm:text-[11px] tracking-[0.15em] font-bold uppercase">
-              Admin Gateway
-            </span>
-          </div>
-        </CodeverseButton>
-      </div>
 
       {/* Main Card */}
       <div className="relative z-10 w-full max-w-[92vw] sm:max-w-[480px] px-4 sm:px-6">
