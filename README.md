@@ -21,7 +21,6 @@ VITE_SUPABASE_PROJECT_ID=your_project_id
 ## Database Setup
 
 1. Run `supabase/schema.sql` in Supabase SQL Editor
-2. Set admin password (see `supabase/CHANGE_PASSWORD.md`)
 
 ## Tech Stack
 
