@@ -1,38 +1,42 @@
-# Codeverse Logic Arena
+# Codeverse Codesprint
 
-Code Sprint platform for **PROCOM 26** at FAST University.
+**Code Sprint Platform for PROCOM 26**
+
+A competitive programming platform designed for PROCOM 26.
+
+## Features
+- **Problem Solving**: Three rounds of algorithmic challenges.
+- **Admin Dashboard**: Manage rounds and monitor progress.
+- **Optimized Performance**: Fast loading with optimized assets.
+
+## Tech Stack
+- React + TypeScript + Vite
+- Tailwind CSS
+- Supabase
 
 ## Setup
 
-```bash
-npm install
-npm run dev
-```
+1. **Install Dependencies**
+   ```bash
+   npm install
+   ```
 
-## Environment Variables
+2. **Environment Variables**
+   Create `.env.local`:
+   ```env
+   VITE_SUPABASE_URL=your_url
+   VITE_SUPABASE_ANON_KEY=your_key
+   VITE_SUPABASE_PROJECT_ID=your_id
+   ```
 
-Create `.env.local`:
-```env
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_anon_key
-VITE_SUPABASE_PROJECT_ID=your_project_id
-```
-
-## Database Setup
-
-1. Run `supabase/schema.sql` in Supabase SQL Editor
-
-## Tech Stack
-
-- React + TypeScript + Vite
-- Supabase
-- Tailwind CSS
+3. **Run Development Server**
+   ```bash
+   npm run dev
+   ```
 
 ## Usage
-
-- **Participants**: Enter team name at home page
-- **Admins**: Login at `/admin` to control rounds
+- **Participants**: Login and solve problems.
+- **Admins**: Access `/admin` to control the rounds.
 
 ---
-
-Built for PROCOM 26 Code Sprint
+_Codeverse Codesprint_
