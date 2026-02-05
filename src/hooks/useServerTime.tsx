@@ -12,7 +12,7 @@ const INITIAL_SYNC_RETRIES = 3; // Retry initial sync if it fails
  * @returns getServerTime - Function that returns current server time
  * @returns isSynced - Whether initial sync is complete
  */
-export const useServerTime = () => {
+export const useServerTime = (syncInterval = 120000) => {
     const [clockOffset, setClockOffset] = useState<number>(0);
     const [isSynced, setIsSynced] = useState<boolean>(false);
 
@@ -84,26 +84,36 @@ export const useServerTime = () => {
         setIsSynced(true);
     }, [syncWithServer]);
 
+    // Initial sync on mount
+    useEffect(() => {
+        performInitialSync();
+    }, [performInitialSync]);
+
     /**
      * Periodic re-sync to handle clock drift
+     * Runs independently from initial sync to avoid restart loops
      */
     useEffect(() => {
-        // Initial sync
-        performInitialSync();
+        // Only start periodic sync after initial sync completes
+        if (!isSynced) return;
 
         // Re-sync periodically
         const interval = setInterval(async () => {
             const newOffset = await syncWithServer();
 
-            // Only update if offset changed significantly (>1 second)
-            if (Math.abs(newOffset - clockOffset) > 1000) {
-                console.log('[Time Sync] Clock drift detected, updating offset');
-                setClockOffset(newOffset);
-            }
-        }, RESYNC_INTERVAL);
+            // Read current offset from state closure
+            setClockOffset(currentOffset => {
+                // Only update if offset changed significantly (>1 second)
+                if (Math.abs(newOffset - currentOffset) > 1000) {
+                    console.log('[Time Sync] Clock drift detected, updating offset');
+                    return newOffset;
+                }
+                return currentOffset; // No change
+            });
+        }, syncInterval);
 
         return () => clearInterval(interval);
-    }, [performInitialSync, syncWithServer, clockOffset]);
+    }, [isSynced, syncWithServer, syncInterval]); // clockOffset removed from deps
 
     /**
      * Get current server time

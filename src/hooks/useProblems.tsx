@@ -11,19 +11,47 @@ export const useProblems = (roundNumber?: number) => {
 
   const fetchProblems = useCallback(async () => {
     try {
-      let query = supabase
-        .from("problems")
-        .select("*")
-        .order("sort_order", { ascending: true });
+      // Check if user is authenticated (admin)
+      const { data: { session } } = await supabase.auth.getSession();
+      const isAdmin = !!session;
 
-      if (roundNumber) {
-        query = query.eq("round_number", roundNumber);
+      let data, error;
+
+      if (isAdmin) {
+        // Admins query problems table directly
+        let query = supabase
+          .from("problems")
+          .select("*")
+          .order("sort_order", { ascending: true });
+
+        if (roundNumber) {
+          query = query.eq("round_number", roundNumber);
+        }
+
+        const result = await query;
+        data = result.data;
+        error = result.error;
+      } else {
+        // Public users query masked view (content is hidden until unlocked)
+        let query = supabase
+          .from("problems_masked" as any)
+          .select("*")
+          .order("sort_order", { ascending: true });
+
+        if (roundNumber) {
+          query = query.eq("round_number", roundNumber);
+        }
+
+        const result = await query;
+        data = result.data;
+        error = result.error;
       }
 
-      const { data, error } = await query;
-
       if (error) throw error;
-      setProblems(data || []);
+
+      // Force new array reference to trigger React re-render
+      // This ensures UI updates when locked content becomes visible
+      setProblems(data ? [...data] : []);
     } catch (err) {
       console.error("Error fetching problems:", err);
     } finally {
@@ -77,21 +105,43 @@ export const useProblems = (roundNumber?: number) => {
   };
 
   useEffect(() => {
-    fetchProblems();
+    const setupUpdates = async () => {
+      // Initial fetch
+      await fetchProblems();
 
-    const channel = supabase
-      .channel("problems-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "problems" },
-        () => {
-          fetchProblems();
-        }
-      )
-      .subscribe();
+      // Check if user is admin
+      const { data: { session } } = await supabase.auth.getSession();
+      const isAdmin = !!session;
+
+      if (isAdmin) {
+        // Admins get realtime updates
+        const channel = supabase
+          .channel("problems-changes")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "problems" },
+            () => {
+              fetchProblems();
+            }
+          )
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      } else {
+        // Public users: No automatic updates
+        // Round2Page will manually call refetch() when problems unlock
+        return () => { };
+      }
+    };
+
+    const cleanup = setupUpdates();
 
     return () => {
-      supabase.removeChannel(channel);
+      cleanup.then(cleanupFn => {
+        if (cleanupFn) cleanupFn();
+      });
     };
   }, [fetchProblems]);
 

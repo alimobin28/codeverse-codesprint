@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { CodeverseButton } from "@/components/ui/codeverse-button";
@@ -30,8 +30,8 @@ const Round2Page = ({ contestId, backgroundImage }: Round2PageProps) => {
     const navigate = useNavigate();
     const { team, loading: teamLoading, updateActivity } = useTeamSession();
     const { getRound, loading: roundsLoading } = useRounds();
-    const { problems, loading: problemsLoading } = useProblems(2);
-    const { getServerTime, isSynced: isTimeSynced } = useServerTime();
+    const { problems, loading: problemsLoading, refetch } = useProblems(2);
+    const { getServerTime, isSynced: isTimeSynced } = useServerTime(30000);
 
     // Track team activity to keep session alive
     useActivityTracker({
@@ -100,6 +100,40 @@ const Round2Page = ({ contestId, backgroundImage }: Round2PageProps) => {
         const interval = setInterval(calculateElapsed, 1000);
         return () => clearInterval(interval);
     }, [round?.timer_active, round?.timer_started_at, totalDurationSeconds, getServerTime]);
+
+    // Auto-refetch when problems unlock (for content masking)
+    const previousElapsedRef = useRef(0);
+    useEffect(() => {
+        if (!round?.timer_active || sortedProblems.length === 0) return;
+
+        // Calculate unlock times for all problems
+        const unlockTimes: number[] = [];
+        let cumulative = 0;
+        sortedProblems.forEach((problem, index) => {
+            if (index === 0) {
+                unlockTimes.push(0); // First problem visible immediately
+            } else {
+                // Each problem unlocks 5 seconds before its scheduled start
+                unlockTimes.push(cumulative - 8);
+            }
+            cumulative += problem.individual_time_limit_seconds || 600;
+        });
+
+        // Check if we just crossed an unlock threshold
+        const previousElapsed = previousElapsedRef.current;
+        const currentElapsed = elapsedSeconds;
+
+        for (let i = 1; i < unlockTimes.length; i++) {
+            const unlockTime = unlockTimes[i];
+            // If we crossed this threshold, refetch
+            if (previousElapsed < unlockTime && currentElapsed >= unlockTime) {
+                refetch();
+                break; // Only refetch once per second
+            }
+        }
+
+        previousElapsedRef.current = currentElapsed;
+    }, [elapsedSeconds, round?.timer_active, sortedProblems, refetch]);
 
     // Redirect if not logged in
     useEffect(() => {
