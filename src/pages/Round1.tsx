@@ -5,7 +5,7 @@ const Round1 = () => {
     <RoundTemplate
       roundNumber={1}
       title="Fragmented Logic Recovery"
-      backgroundImage="/e2.png"
+      backgroundImage="/round1.webp"
       allowedProblems={["A", "B", "C", "D", "E"]}
       showHints={true} // Round 1 has hints
     />

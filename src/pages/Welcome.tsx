@@ -129,7 +129,7 @@ const Welcome = () => {
       {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/i3.png')" }}
+        style={{ backgroundImage: "url('/main_screen.webp')" }}
       />
 
       {/* Overlays */}

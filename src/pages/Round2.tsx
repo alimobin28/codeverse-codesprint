@@ -3,7 +3,7 @@ import Round2Page from "./Round2Page";
 const Round2 = () => {
   return (
     <Round2Page
-      backgroundImage="/e3.png"
+      backgroundImage="/round2.webp"
     />
   );
 };

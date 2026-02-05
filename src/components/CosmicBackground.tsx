@@ -11,10 +11,10 @@ export const CosmicBackground = () => {
         width: '100vw',
         height: '100vh',
         zIndex: -50,
-        
+
         // Make sure this matches your uploaded file name exactly
-        backgroundImage: `url('/i3.png')`, 
-        
+        backgroundImage: `url('/main_screen.webp')`,
+
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
