@@ -1,9 +1,16 @@
 /**
  * Auth Service - Server-side authentication using Supabase Auth
  * Uses Supabase Auth for proper server-side session management
+ * ADMIN ONLY - Team users use separate password verification
  */
 
 import { supabase } from '@/integrations/supabase/client';
+
+// Whitelist of allowed admin emails
+const ADMIN_EMAILS = [
+    'admin@codeverse.app',
+    // Add more admin emails as needed
+];
 
 export interface AuthResponse {
     success?: boolean;
@@ -13,9 +20,15 @@ export interface AuthResponse {
 class AuthService {
     /**
      * Login with email and password via Supabase Auth
+     * Only allows whitelisted admin emails
      */
     async login(email: string, password: string): Promise<AuthResponse> {
         try {
+            // Check if email is in admin whitelist
+            if (!ADMIN_EMAILS.includes(email.toLowerCase())) {
+                return { error: 'Not authorized as admin' };
+            }
+
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,

@@ -9,20 +9,23 @@ import { BroadcastBanner } from "@/components/BroadcastBanner";
 
 const Index = () => {
   const [teamName, setTeamName] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { createTeam, error } = useTeamSession();
+  const { createTeam, login, error } = useTeamSession();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!teamName.trim()) return;
+    if (!teamName.trim() || !password.trim()) return;
 
     setIsSubmitting(true);
-    const result = await createTeam(teamName.trim());
+    const result = await login(teamName.trim(), password);
     setIsSubmitting(false);
 
-    if (result) navigate("/welcome");
+    if (result) {
+      navigate("/welcome");
+    }
   };
 
   return (
@@ -59,53 +62,91 @@ const Index = () => {
               </div>
 
               <h1 className="
-                text-[2.75rem] sm:text-5xl
+                text-[1.5rem] xs:text-[2rem] sm:text-[2.5rem] md:text-4.8xl lg:text-5.9xl
                 font-black
                 tracking-tight
                 leading-none
                 text-white
                 mb-2
                 drop-shadow-lg
+                transition-all
+                duration-300
               ">
-                <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-lime-300 to-lime-600 drop-shadow-[0_0_10px_rgba(163,230,53,0.3)]">
+                <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-lime-300 to-lime-600 drop-shadow-[0_0_10px_rgba(163,230,53,0.3)] whitespace-nowrap">
                   CODEVERSE
                 </span>
               </h1>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
 
               <div className="space-y-3">
-                <label className="ml-1 flex items-center gap-2 text-[10px] sm:text-[11px] uppercase tracking-widest font-bold text-lime-300/80">
-                  <Terminal className="w-3 h-3" />
-                  Enter Team Identification
+                <label className="ml-1 flex items-center gap-2.5 text-sm uppercase tracking-[0.15em] font-bold text-lime-400">
+                  <span className="w-2 h-2 rounded-full bg-lime-400 shadow-[0_0_8px_rgba(163,230,53,0.8)] animate-pulse" />
+                  Username
                 </label>
 
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lime-400 font-bold animate-pulse">
-                    &gt;_
-                  </span>
+                <div className="relative group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-lime-500/20 to-transparent rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity blur-xl" />
 
                   <CodeverseInput
-                    id="teamName"
+                    id="username"
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
-                    placeholder="TEAM_IDENTIFIER"
+                    placeholder="Team Proxima"
                     disabled={isSubmitting}
-                    autoComplete="off"
+                    autoComplete="username"
                     className="
-                      pl-10
-                      h-12 sm:h-14
-                      bg-black/50
-                      border-white/10
-                      focus:border-lime-500/80
-                      focus:ring-1 focus:ring-lime-500/50
-                      text-lime-100
-                      placeholder:text-lime-700/50
-                      font-mono
-                      text-base sm:text-lg
-                      tracking-wide sm:tracking-wider
+                      relative
+                      h-14
+                      bg-black/60
+                      border-lime-500/30
+                      hover:border-lime-500/50
+                      focus:border-lime-400
+                      focus:ring-2 focus:ring-lime-500/30
+                      text-lime-50
+                      placeholder:text-lime-600/50
+                      font-medium
+                      text-base
+                      tracking-wide
+                      transition-all
+                      rounded-lg
+                    "
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="ml-1 flex items-center gap-2.5 text-sm uppercase tracking-[0.15em] font-bold text-lime-400">
+                  <span className="w-2 h-2 rounded-full bg-lime-400 shadow-[0_0_8px_rgba(163,230,53,0.8)] animate-pulse" />
+                  Password
+                </label>
+
+                <div className="relative group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-lime-500/20 to-transparent rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity blur-xl" />
+
+                  <CodeverseInput
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Today we codesprint"
+                    disabled={isSubmitting}
+                    autoComplete="current-password"
+                    className="
+                      relative
+                      h-14
+                      bg-black/60
+                      border-lime-500/30
+                      hover:border-lime-500/50
+                      focus:border-lime-400
+                      focus:ring-2 focus:ring-lime-500/30
+                      text-lime-50
+                      placeholder:text-lime-600/50
+                      font-medium
+                      text-base
+                      tracking-wide
                       transition-all
                       rounded-lg
                     "
@@ -123,9 +164,9 @@ const Index = () => {
               <CodeverseButton
                 type="submit"
                 size="xl"
-                disabled={!teamName.trim() || isSubmitting}
+                disabled={!teamName.trim() || !password.trim() || isSubmitting}
                 className={`w-full h-12 sm:h-14 relative overflow-hidden group border-0 rounded-lg shadow-[0_0_20px_rgba(163,230,53,0.25)]
-                  ${!teamName.trim()
+                  ${(!teamName.trim() || !password.trim())
                     ? "opacity-60 grayscale cursor-not-allowed"
                     : "hover:shadow-[0_0_35px_rgba(163,230,53,0.5)]"
                   }`}

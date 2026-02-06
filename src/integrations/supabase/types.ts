@@ -332,6 +332,13 @@ export type Database = {
                 }
                 Returns: undefined
             }
+            verify_team_credentials: {
+                Args: {
+                    p_username: string
+                    p_password: string
+                }
+                Returns: Json
+            }
         }
         Enums: {
             [_ in never]: never

@@ -109,18 +109,14 @@ const Admin = () => {
       <div className="min-h-screen flex items-center justify-center p-4">
         <CosmicBackground />
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative z-10 w-full max-w-md"
-        >
+        <div className="relative z-10 w-full max-w-md">
           <CodeverseCard
             variant="elevated"
             className={`bg-black/80 backdrop-blur-xl ${neonBorder}`}
           >
             <CodeverseCardHeader>
               <div className="flex items-center gap-3">
-                <Shield className="w-6 h-6 text-lime-400 drop-shadow-[0_0_8px_rgba(163,230,53,0.8)]" />
+                <Shield className="w-6 h-6 text-lime-400" />
                 <CodeverseCardTitle className="text-lime-100">
                   Admin Access
                 </CodeverseCardTitle>
@@ -148,16 +144,7 @@ const Admin = () => {
               <CodeverseButton
                 type="submit"
                 disabled={isLoading}
-                className="
-                  w-full 
-                  !bg-[#7BC62D] 
-                  !text-black 
-                  font-bold 
-                  hover:!bg-[#8cd63d] 
-                  shadow-[0_0_20px_rgba(123,198,45,0.5)] 
-                  transition-all duration-300
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                "
+                className="w-full !bg-[#7BC62D] !text-black font-bold hover:!bg-[#8cd63d] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "AUTHENTICATING..." : "AUTHENTICATE"}
               </CodeverseButton>
@@ -174,7 +161,7 @@ const Admin = () => {
               </CodeverseButton>
             </div>
           </CodeverseCard>
-        </motion.div>
+        </div>
       </div>
     );
   }

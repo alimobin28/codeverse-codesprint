@@ -20,7 +20,7 @@ const typeColors = {
     error: "bg-red-500/20 border-red-500/50 text-red-200",
 };
 
-const DISPLAY_DURATION_MS = 2 * 60 * 1000; // 2 minutes
+const DISPLAY_DURATION_MS = 30 * 1000; // 30 seconds
 
 export const BroadcastBanner = () => {
     const [activeBroadcasts, setActiveBroadcasts] = useState<Broadcast[]>([]);

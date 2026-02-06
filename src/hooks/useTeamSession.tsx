@@ -8,24 +8,40 @@ const SESSION_KEY = "codeverse_session_id";
 const LAST_ACTIVITY_KEY = "codeverse_last_activity";
 const INACTIVITY_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes
 
+// Interface for RPC response
+interface VerifyCredentialsResponse {
+  success: boolean;
+  team?: {
+    id: string;
+    name: string;
+    username: string;
+    session_id: string;
+    created_at: string;
+    auth_user_id: string | null;
+  };
+  error?: string;
+}
+
 export const useTeamSession = () => {
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load team by session ID from sessionStorage
   const loadTeamBySessionId = useCallback(async (sessionId: string) => {
     try {
-      // Check if session has expired due to inactivity
+      // Check inactivity timeout
       const lastActivity = sessionStorage.getItem(LAST_ACTIVITY_KEY);
       if (lastActivity) {
         const inactiveTime = Date.now() - parseInt(lastActivity);
         if (inactiveTime >= INACTIVITY_TIMEOUT_MS) {
-          console.warn("Session expired due to inactivity, clearing.");
+          console.warn("Session expired due to inactivity");
           sessionStorage.removeItem(SESSION_KEY);
           sessionStorage.removeItem(LAST_ACTIVITY_KEY);
           return null;
         }
       }
+
       const { data, error } = await supabase
         .from("teams")
         .select("*")
@@ -33,41 +49,38 @@ export const useTeamSession = () => {
         .single();
 
       if (error) {
-        // Only clear session if the team was truly not found
-        // PGRST116 is "The result contains 0 rows" (single() returned nothing)
         if (error.code === "PGRST116" || error.code === "406") {
-          console.warn("Session invalid, clearing.");
+          console.warn("Session invalid, clearing");
           sessionStorage.removeItem(SESSION_KEY);
           sessionStorage.removeItem(LAST_ACTIVITY_KEY);
           return null;
         }
-        // For other errors (network, etc), throw to keep the loading state or handle gracefully
-        // but DO NOT logout the user.
         throw error;
       }
+
       setTeam(data);
       return data;
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error loading team:", err);
-      // Only clear if we explicitly decided to above, otherwise keep session
-      if (!sessionStorage.getItem(SESSION_KEY)) {
-        return null;
-      }
-      // If network error, we might want to return null but NOT clear storage
-      // so the user can refresh later.
       return null;
     }
   }, []);
 
+  // Initialize session on mount
   const initializeSession = useCallback(async () => {
-    setLoading(true);
+    const storedSessionId = sessionStorage.getItem(SESSION_KEY);
+
+    // If no session stored, we're done loading
+    if (!storedSessionId) {
+      setLoading(false);
+      return;
+    }
+
+    // Session exists, load the team
     try {
-      const storedSessionId = sessionStorage.getItem(SESSION_KEY);
-      if (storedSessionId) {
-        const existingTeam = await loadTeamBySessionId(storedSessionId);
-        if (existingTeam) {
-          setTeam(existingTeam);
-        }
+      const existingTeam = await loadTeamBySessionId(storedSessionId);
+      if (existingTeam) {
+        setTeam(existingTeam);
       }
     } catch (err) {
       console.error("Error initializing session:", err);
@@ -76,56 +89,80 @@ export const useTeamSession = () => {
     }
   }, [loadTeamBySessionId]);
 
+  // Simple login using direct RPC call
+  const login = async (username: string, password: string): Promise<Team | null> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log("[LOGIN] Verifying credentials for:", username);
+
+      // Call the RPC function to verify credentials
+      const { data, error: rpcError } = await supabase.rpc("verify_team_credentials", {
+        p_username: username,
+        p_password: password,
+      });
+
+      console.log("[LOGIN] RPC response:", data);
+
+      if (rpcError) {
+        console.error("[LOGIN] RPC error:", rpcError);
+        setError("Login failed. Please try again.");
+        setLoading(false);
+        return null;
+      }
+
+      const response = data as unknown as VerifyCredentialsResponse;
+
+      if (!response.success || !response.team) {
+        console.error("[LOGIN] Invalid credentials");
+        setError(response.error || "Invalid username or password");
+        setLoading(false);
+        return null;
+      }
+
+      console.log("[LOGIN] Success! Team:", response.team);
+
+      // Store session and set team
+      const teamData = response.team as unknown as Team;
+      setTeam(teamData);
+      sessionStorage.setItem(SESSION_KEY, teamData.session_id);
+      sessionStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+      setLoading(false);
+
+      return teamData;
+    } catch (err) {
+      console.error("[LOGIN] Unexpected error:", err);
+      setError("Login failed. Please try again.");
+      setLoading(false);
+      return null;
+    }
+  };
+
+  // Create team (legacy - kept for compatibility)
   const createTeam = async (teamName: string): Promise<Team | null> => {
     setLoading(true);
     setError(null);
 
     try {
-      // Check if team already exists
-      const { data: existingTeam } = await supabase
-        .from("teams")
-        .select("*")
-        .eq("name", teamName)
-        .single();
+      const sessionId = crypto.randomUUID();
 
-      if (existingTeam) {
-        // Team exists, join existing session
-        sessionStorage.setItem(SESSION_KEY, existingTeam.session_id);
-        sessionStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
-        setTeam(existingTeam);
-        return existingTeam;
-      }
-
-      // Create new team
-      const { data: newTeam, error: createError } = await supabase
+      const { data, error } = await supabase
         .from("teams")
-        .insert({ name: teamName })
+        .insert([{ name: teamName, session_id: sessionId }])
         .select()
         .single();
 
-      if (createError) {
-        if (createError.code === "23505") {
-          setError("Team name already exists. Joining existing session...");
-          // Race condition - team was created between check and insert
-          const { data: raceTeam } = await supabase
-            .from("teams")
-            .select("*")
-            .eq("name", teamName)
-            .single();
-          if (raceTeam) {
-            sessionStorage.setItem(SESSION_KEY, raceTeam.session_id);
-            sessionStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
-            setTeam(raceTeam);
-            return raceTeam;
-          }
-        }
-        throw createError;
+      if (error) {
+        setError(error.message);
+        return null;
       }
 
-      sessionStorage.setItem(SESSION_KEY, newTeam.session_id);
+      setTeam(data);
+      sessionStorage.setItem(SESSION_KEY, sessionId);
       sessionStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
-      setTeam(newTeam);
-      return newTeam;
+
+      return data;
     } catch (err: any) {
       setError(err.message || "Failed to create team");
       return null;
@@ -134,31 +171,51 @@ export const useTeamSession = () => {
     }
   };
 
-  const clearSession = () => {
+  // Clear session
+  const clearSession = useCallback(() => {
+    setTeam(null);
     sessionStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(LAST_ACTIVITY_KEY);
-    setTeam(null);
-  };
+    setError(null);
+  }, []);
 
+  // Update activity timestamp
   const updateActivity = useCallback(() => {
     if (team) {
       sessionStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
     }
   }, [team]);
 
+  // Initialize on mount
   useEffect(() => {
     initializeSession();
   }, [initializeSession]);
+
+  // Activity tracking
+  useEffect(() => {
+    if (!team) return;
+
+    const handleActivity = () => updateActivity();
+    const events = ["mousedown", "keydown", "touchstart", "scroll"];
+
+    events.forEach((event) => {
+      window.addEventListener(event, handleActivity, { passive: true });
+    });
+
+    return () => {
+      events.forEach((event) => {
+        window.removeEventListener(event, handleActivity);
+      });
+    };
+  }, [team, updateActivity]);
 
   return {
     team,
     loading,
     error,
+    login,
     createTeam,
     clearSession,
     updateActivity,
-    isAuthenticated: !!team,
   };
 };
-
-export default useTeamSession;
