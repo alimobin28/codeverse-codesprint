@@ -8,6 +8,8 @@ A competitive programming platform designed for PROCOM 26.
 - **Problem Solving**: Three rounds of algorithmic challenges.
 - **Admin Dashboard**: Manage rounds and monitor progress.
 - **Optimized Performance**: Fast loading with optimized assets.
+- **Secure Authentication**: RPC-based team login with server-side validations.
+- **Anti-Cheat System**: Server-side masking for Round 2 content.
 
 ## Tech Stack
 - React + TypeScript + Vite
@@ -40,3 +42,4 @@ A competitive programming platform designed for PROCOM 26.
 
 ---
 _Codeverse Codesprint_
+
