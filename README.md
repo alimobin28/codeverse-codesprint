@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ CodeVerse CodeSprint
+# </> CodeVerse CodeSprint
 
 ### Competitive Programming Platform — Procom'26
 
@@ -23,6 +23,36 @@ CodeVerse CodeSprint is a browser-based problem statement delivery platform desi
 - **Database-level content masking** for Round 2's sequential problem reveal
 
 > **Note:** Submissions and judging are handled externally via VJudge. This platform exclusively manages problem display, round control, hints, and team sessions.
+
+---
+
+## Platform Preview
+
+<div align="center">
+
+### Team Dashboard
+
+<img src="public/Main_Screen.png" alt="Team Dashboard — Round Selection" width="90%" />
+
+<sub>The mission selection interface. Teams start here to learn about the CodeVerse storyline and choose their next challenge.</sub>
+
+<br/><br/>
+
+### Round 2 — Sequential Timer Challenge
+
+<img src="public/Round_2_TimerRound.png" alt="Round 2 — Sequential Timer Round" width="90%" />
+
+<sub>Our sequential challenge round. Problems are revealed one by one with strict time limits, ensuring every team stays synchronized.</sub>
+
+<br/><br/>
+
+### Admin Control Panel
+
+<img src="public/Admin_Panel.png" alt="Admin Control Panel" width="90%" />
+
+<sub>The central control panel for administrators. From here, you can manage round access, monitor timers, and oversee the entire competition in real-time.</sub>
+
+</div>
 
 ---
 
@@ -200,8 +230,6 @@ In Supabase Dashboard → Authentication → Users → Add User:
 
 - **Email:** `admin@codeverse.app`
 - **Password:** your chosen password
-
-> See [docs/ADMIN_SETUP.md](docs/ADMIN_SETUP.md) for detailed instructions.
 
 ### 5. Import Teams
 
